@@ -1,0 +1,12 @@
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\bin\Debug\net8.0\Vector.Core.deps.json
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\bin\Debug\net8.0\Vector.Core.dll
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\bin\Debug\net8.0\Vector.Core.pdb
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.csproj.AssemblyReference.cache
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.AssemblyInfoInputs.cache
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.AssemblyInfo.cs
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.csproj.CoreCompileInputs.cache
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.dll
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\refint\Vector.Core.dll
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\Vector.Core.pdb
+C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net8.0\ref\Vector.Core.dll

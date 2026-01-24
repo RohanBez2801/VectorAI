@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Vector.Core/Vector.Core.csproj" />
+  <Project Path="Vector.HUD/Vector.HUD.csproj" Id="4485707b-6b07-4ec2-a4be-c843cd7162cd" />
+  <Project Path="Vector.Native/Vector.Native.vcxproj" Id="345687b7-76b0-41e0-b276-f618a341de0d" />
+  <Project Path="Vector.Service/Vector.Service.csproj" Id="5dc54ece-4974-441c-bc87-2102e7061e93" />
+</Solution>

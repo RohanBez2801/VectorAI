@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "Vector.HUD\\Vector.HUD.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Vector.Service\\Vector.Service.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

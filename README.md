@@ -9,7 +9,7 @@
 ## 👁️ Overview
 VECTOR is a **Synthetic Intelligence** designed to run locally on Windows 11. Unlike standard chatbots, VECTOR is integrated into the host operating system. It possesses "Hands" (File I/O, Shell execution), "Ears" (UDP Audio Telemetry), "Eyes" (Screen Analysis), and "Memory" (RAG/Vector Database).
 
-Crucially, VECTOR implements a **Human-in-the-Loop (HITL)** architecture for all high-risk operations. It cannot modify files or execute system commands without explicit, sarcastic, interactive user approval.
+Crucially, VECTOR implements a **Human-in-the-Loop (HITL)** architecture for all high-risk operations. It cannot modify files or execute system commands without explicit, interactive user approval.
 
 ## ⚡ Key Capabilities
 

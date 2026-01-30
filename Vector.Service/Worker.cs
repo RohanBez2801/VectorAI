@@ -18,6 +18,7 @@ public class Worker : BackgroundService
     private VectorBrain _brain = null!;
     private MicrophoneListener? _microphoneListener;
     private PiperVoiceService _piperService;
+    private VisualAttentionService _visualAttention;
     private Task? _sttTask;
     private string _uiState = "Idle";
     private System.Net.Sockets.UdpClient? _udpClient;
@@ -31,6 +32,7 @@ public class Worker : BackgroundService
     {
         _logger = logger;
         _piperService = new PiperVoiceService();
+        _visualAttention = new VisualAttentionService();
     }
 
     // TTS using Azure Cognitive Services Speech SDK (neural voices if available).
@@ -134,8 +136,8 @@ public class Worker : BackgroundService
         }
     }
 
-    // --- LOOP B: THE EYES (Slow, ~3000ms) ---
-    // Looks at the screen without stopping the heart.
+    // --- LOOP B: THE EYES (Slow, ~5s with delta detection) ---
+    // Looks at the screen only when something changes.
     private async Task RunVisionLoop(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -147,15 +149,29 @@ public class Worker : BackgroundService
                     byte[]? screenData = CapturePrimaryScreen();
                     if (screenData != null)
                     {
-                        // Fire and forget so we don't wait for LLaVA to finish before looping
-                        _ = _brain.ProcessVisualInputAsync(screenData);
+                        // Delta Detection: Skip if frame hasn't changed
+                        if (_visualAttention.HasSignificantChange(screenData))
+                        {
+                            // Downsample for faster LLaVA processing
+                            var optimizedFrame = _visualAttention.DownsampleFrame(screenData, 800);
+                            if (optimizedFrame != null)
+                            {
+                                // Fire and forget so we don't wait for LLaVA to finish
+                                _ = _brain.ProcessVisualInputAsync(optimizedFrame);
+                                _logger.LogDebug("Vision: Delta detected, frame sent to LLaVA.");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Vision: No significant change, skipping frame.");
+                        }
                     }
                 }
             }
             catch { }
 
-            // Look every 3 seconds
-            await Task.Delay(3000, ct);
+            // Sample every 5 seconds (reduced from 3s due to delta detection)
+            await Task.Delay(5000, ct);
         }
     }
 

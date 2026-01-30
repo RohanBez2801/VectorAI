@@ -1,0 +1,43 @@
+<Window x:Class="Vector.HUD.ApprovalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VECTOR Approval" Height="400" Width="800"
+        WindowStyle="None" AllowsTransparency="True" Background="#CC000000" Topmost="True">
+    <Grid Margin="12">
+        <Border Background="#FF111114" CornerRadius="8" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Permission to overwrite file? I promise not to delete your favorite games... probably." Foreground="#00FFD1" FontSize="14" FontWeight="Bold"/>
+
+                <Grid Grid.Row="1" Margin="0,12,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Old" Foreground="#AAAAAA" Margin="0,0,0,6"/>
+                        <ScrollViewer Height="260" VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="OldText" Text="" FontFamily="Consolas" Foreground="#FFFFFF" Background="#00101010" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                        <TextBlock Text="New" Foreground="#AAAAAA" Margin="0,0,0,6"/>
+                        <ScrollViewer Height="260" VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="NewText" Text="" FontFamily="Consolas" Foreground="#FFFFFF" Background="#00101010" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="CancelButton" Content="Cancel" Width="120" Margin="6"/>
+                    <Button x:Name="ConfirmButton" Content="Confirm Override" Width="160" Margin="6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

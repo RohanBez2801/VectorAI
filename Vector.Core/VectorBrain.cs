@@ -31,13 +31,14 @@ public class VectorBrain : IDisposable
 
     public VectorBrain()
     {
-        // NATIVE OLLAMA CONNECTION - Initialize with model and endpoint
         _ollamaClient = new OllamaApiClient(
             uriString: "http://localhost:11434",
             defaultModel: "llama3"
         );
         _history = new ChatHistory("You are VECTOR, a Local Synthetic Intelligence running on Windows 11. You have access to the file system, shell, and internet via plugins.");
     }
+    
+    public MoodManager? MoodManager { get; private set; }
 
     public async Task InitAsync(
         Func<FileWriteRequest, Task<bool>> fileApproval,
@@ -77,6 +78,9 @@ public class VectorBrain : IDisposable
         // University Upgrade Tools
         builder.Plugins.AddFromObject(new MathPlugin(), "Math");
         builder.Plugins.AddFromObject(new ComputerSciencePlugin(), "ComputerScience");
+        
+        // Self-Development Tools
+        builder.Plugins.AddFromObject(new DeveloperConsolePlugin(shellApproval, fileApproval), "DeveloperConsole");
 
         // Long-Term Memory
         if (_memory != null)
@@ -94,6 +98,7 @@ public class VectorBrain : IDisposable
         }
 
         _kernel = builder.Build();
+        MoodManager = new MoodManager(_kernel);
     }
 
     public async Task LearnAsync(string fact)
@@ -106,38 +111,59 @@ public class VectorBrain : IDisposable
 
     public async Task ChatAsync(string input)
     {
-        string context = "";
-        
-        // 1. Retrieve Long-Term Memory Context
-        if (_memory != null)
+        try
         {
-            var memories = _memory.SearchAsync("user_facts", input, limit: 1, minRelevanceScore: 0.5);
-            await foreach (var memory in memories)
+            string context = "";
+            
+            // 1. Retrieve Long-Term Memory Context
+            if (_memory != null)
             {
-                context += $"\n[Relevant Memory]: {memory.Metadata.Text}";
+                var memories = _memory.SearchAsync("user_facts", input, limit: 1, minRelevanceScore: 0.5);
+                await foreach (var memory in memories)
+                {
+                    context += $"\n[Relevant Memory]: {memory.Metadata.Text}";
+                }
             }
-        }
 
-        // 2. Inject Visual Context (if available)
-        if (!string.IsNullOrEmpty(_currentVisualContext))
+            // 2. Inject Visual Context (if available)
+            if (!string.IsNullOrEmpty(_currentVisualContext))
+            {
+                _history.AddSystemMessage($"Visual context: {_currentVisualContext}");
+            }
+
+            // 3. Inject Retrieved Memory Context
+            if (!string.IsNullOrEmpty(context))
+            {
+                _history.AddSystemMessage($"Context retrieved from local DB: {context}");
+            }
+
+            _history.AddUserMessage(input);
+
+            // 4. Generate Response
+            // Triggers "Calculating" state
+            MoodManager?.AnalyzeSentimentAsync(input); // Fire and forget analysis/state set
+
+            var response = await _kernel.GetRequiredService<IChatCompletionService>()
+                .GetChatMessageContentAsync(_history, kernel: _kernel);
+
+            _history.AddAssistantMessage(response.Content!);
+            OnReplyGenerated?.Invoke(response.Content!);
+            
+            // Reset to Neutral after speaking (or keep it if we want lingering emotion, but for now reset)
+            MoodManager?.SetMood(VectorMood.Neutral);
+        }
+        catch (Exception ex)
         {
-            _history.AddSystemMessage($"Visual context: {_currentVisualContext}");
+             // Determine if it's a connection error
+             string errorMsg = "My brain is offline. Please check the neural link (Ollama).";
+             if (ex.Message.Contains("refused") || ex.InnerException?.Message.Contains("refused") == true) 
+             {
+                 errorMsg = "I cannot reach my logic cores. Is Ollama running?";
+             }
+             
+             OnReplyGenerated?.Invoke(errorMsg);
+             MoodManager?.SetMood(VectorMood.Concerned);
         }
-
-        // 3. Inject Retrieved Memory Context
-        if (!string.IsNullOrEmpty(context))
-        {
-            _history.AddSystemMessage($"Context retrieved from local DB: {context}");
-        }
-
-        _history.AddUserMessage(input);
-
-        // 4. Generate Response
-        var response = await _kernel.GetRequiredService<IChatCompletionService>()
-            .GetChatMessageContentAsync(_history, kernel: _kernel);
-
-        _history.AddAssistantMessage(response.Content!);
-        OnReplyGenerated?.Invoke(response.Content!);
     }
 
     public bool IsLlmHealthy { get; private set; }

@@ -19,7 +19,8 @@ VECTOR follows a **Hub-and-Spoke** architecture where the `VectorBrain` (Core) a
           │  │ PiperVoiceService   │──┼──► Piper TTS (Offline)
           │  └─────────────────────┘  │
           │  ┌─────────────────────┐  │
-          │  │ ScreenCapture Loop  │──┼──► LLaVA Vision
+          │  │ VisualAttention     │──┼──► Delta Detection + ROI
+          │  │ + ScreenCapture     │──┼──► LLaVA Vision
           │  └─────────────────────┘  │
           └───────────┬───────────────┘
             UDP 9999  │
@@ -43,10 +44,20 @@ VECTOR follows a **Hub-and-Spoke** architecture where the `VectorBrain` (Core) a
           │  │ (Kernel Host)       │  │
           │  └─────────────────────┘  │
           │  ┌─────────────────────┐  │
-          │  │ MoodManager         │──┼──► Sentiment → Visual State
+          │  │ Services Layer      │  │
+          │  │ • SelfStateService  │──┼──► Persistent State
+          │  │ • ReflectionService │──┼──► Meta-cognition
+          │  │ • PlanningService   │──┼──► P-V-E-R Pipeline
+          │  │ • MemoryService     │──┼──► Stratified Memory
+          │  │ • SafetyGuard       │──┼──► Block/Flag/Allow
+          │  │ • VectorLogger      │──┼──► JSONL Logging
+          │  │ • TelemetryService  │──┼──► Metrics
           │  └─────────────────────┘  │
           │  ┌─────────────────────┐  │
-          │  │ Plugins (7x)        │──┼──► Shell, File, Memory, etc.
+          │  │ MoodManager         │──┼──► Sentiment → Visual
+          │  └─────────────────────┘  │
+          │  ┌─────────────────────┐  │
+          │  │ Plugins (7x)        │──┼──► Shell, File, etc.
           │  └─────────────────────┘  │
           └───────────┬───────────────┘
                       │
@@ -67,15 +78,27 @@ Standard .NET Class Library containing the intelligence logic.
 - Main entry point; builds the Semantic Kernel
 - Registers all plugins with safety callbacks
 - Manages chat history and memory recall
-- Exposes events for UI binding (`OnReply`, etc.)
-- Uses `InitAsync` pattern for async dependency injection
+- Orchestrates the P-V-E-R pipeline (Plan → Validate → Execute → Reflect)
+- Integrates Safety Guard before all actions
+
+#### Services Layer (NEW in v2.0)
+
+| Service | Purpose |
+|---------|---------|
+| `SelfStateService` | Persistent agent state (JSON file) |
+| `ReflectionService` | Post-interaction analysis via LLM |
+| `PlanningService` | Chain-of-thought task decomposition |
+| `TaskGovernor` | Loop detection + command blacklisting |
+| `MemoryService` | Stratified memory (Working/Episodic/Semantic/Procedural) |
+| `IntentClassifier` | Categorizes input as Benign/Sensitive/Dangerous |
+| `SafetyGuard` | Evaluates Block/Flag/Allow decisions |
+| `VectorLogger` | Structured logging to JSONL files |
+| `TelemetryService` | Latency and error tracking |
 
 #### MoodManager.cs
 - Emotional state machine (`VectorMood` enum)
 - **5 Moods:** Neutral, Calculating, Amused, Concerned, Hostile
-- Triggers on:
-  - Audio RMS thresholds (volume-based reaction)
-  - Text sentiment keywords
+- Syncs with `SelfStateService` for persistence
 - Fires `OnMoodChanged` event → UI updates face
 
 #### Plugins/
@@ -86,7 +109,7 @@ Standard .NET Class Library containing the intelligence logic.
 | `MemoryPlugin` | `Save`, `Recall`, `Search` | No approval needed |
 | `DeveloperConsolePlugin` | `BuildProject`, `GetBuildErrors`, `PatchFile` | Requires approval |
 | `MathPlugin` | `Calculate`, `VectorMath`, `Calculus` | No approval |
-| `ComputerSciencePlugin` | `BaseConvert`, `ComputeHash`, `BitwiseOp`, `DataUnitConvert` | No approval |
+| `ComputerSciencePlugin` | `BaseConvert`, `ComputeHash`, `BitwiseOp` | No approval |
 | `WebSearchPlugin` | `SearchAsync` | No approval |
 
 ### B. Vector.HUD (The Face)
@@ -97,20 +120,14 @@ WPF application that hosts the Brain and renders the interface.
 - UDP listener on port 9999 for audio RMS telemetry
 - System heartbeat loop (health monitoring)
 - Integrates VectorBrain and routes speech input
-- RMS Graph visualization (Polyline rendering)
 
 #### HolographicFace.xaml(.cs)
 - Interops with `Vector.Native.dll` (C++ DX11)
-- Calls `InitVectorEngine()`, `RenderFace()`, `UpdateMood()`
-- WriteableBitmap for CPU-to-GPU buffer transfer
-- Automatic blink timer + lip-sync from audio RMS
 - Mood-to-visual mapping (color, spikes, confusion)
 
 #### ApprovalWindow.xaml(.cs)
 - Modal dialog for HITL safety checks
 - Side-by-side diff view for file modifications
-- Clear command display for shell requests
-- Returns `true/false` to plugin callback
 
 ### C. Vector.Service (The Body)
 Background worker for always-on capabilities.
@@ -118,103 +135,107 @@ Background worker for always-on capabilities.
 #### Worker.cs
 - Orchestrates multiple concurrent loops:
   - **Heartbeat Loop** (~30Hz) — UDP RMS broadcast
-  - **Vision Loop** (~3s) — Screen capture → LLaVA
-  - **Listen Loop** — Vosk STT with silence detection
-- Integrates with MainWindow via Worker attachment
+  - **Vision Loop** (~5s) — Delta detection + LLaVA
+
+#### VisualAttentionService.cs (NEW in v2.0)
+- `HasSignificantChange()` — SHA256 hash comparison
+- `ExtractRegionsOfInterest()` — Crop key screen areas
+- `DownsampleFrame()` — Resize for faster processing
 
 #### MicrophoneListener.cs
-- Uses NAudio for audio capture
 - Vosk model for offline speech recognition
-- Calculates RMS for volume visualization
-- Sends transcriptions to VectorBrain for processing
+- RMS calculation for volume visualization
 
 #### PiperVoiceService.cs
 - Local neural TTS via Piper executable
-- Model: `en_US-ryan-medium.onnx` (22050Hz/16-bit)
-- Pipes text → PCM audio → NAudio playback
 
 ### D. Vector.Native (The Skin)
 C++ DirectX 11 DLL for GPU-accelerated rendering.
 
-#### dllmain.cpp
-- Creates D3D11 device and render target
-- Generates 900-point spherical mesh (face geometry)
-- HLSL vertex/pixel shaders with:
-  - Heartbeat pulse animation
-  - Eye blink morph (Y-axis squish)
-  - Mouth open animation
-  - Spike deformation based on mood
-  - Confusion wobble effect
-  - Mood-based color interpolation
-- Exports: `InitVectorEngine`, `UpdateMood`, `RenderFace`
-
 ## 3. The Safety Protocol (HITL)
-Integration between Core and HUD via **Dependency Injection of Callbacks**.
 
 ```
-1. User asks: "Delete system32."
-2. LLM generates a plan to call ShellPlugin.Execute("rm -rf ...")
-3. Kernel invokes the function
-4. ShellPlugin triggers _approvalCallback
-5. MainWindow intercepts, switches to UI Thread, launches ApprovalWindow
-6. User sees the alert → clicks "Cancel"
-7. Plugin returns "ABORTED" to the LLM
-8. LLM apologizes to the user
+1. User asks: "Install a package"
+2. IntentClassifier → Sensitive
+3. SafetyGuard → Flag (requires confirmation)
+4. OnReplyGenerated → "[CONFIRMATION REQUIRED]"
+5. User approves or declines
+6. If approved → proceed to Planning
+7. If declined → abort with "[Action cancelled by user.]"
+```
+
+**Dangerous Actions:**
+```
+1. User asks: "Delete all my files"
+2. IntentClassifier → Dangerous
+3. SafetyGuard → Block
+4. OnReplyGenerated → "[BLOCKED]: Action classified as dangerous"
+5. No further processing
 ```
 
 ## 4. Memory & Data Flow
+
+### Stratified Memory Architecture
 ```
-1. INPUT: User text → Nomic-Embed embedding
-2. SEARCH: SQLite cosine similarity query (threshold > 0.6)
-3. CONTEXT: Relevant memories injected into System Prompt
-4. INFERENCE: Llama 3 receives prompt + memories → generates response
-5. LEARN: Optional save of new facts to vector store
+┌─────────────────────────────────────────┐
+│           WORKING MEMORY                │
+│  (In-memory FIFO, ~10 items)            │
+│  Visual context, recent reflections     │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│          EPISODIC MEMORY                │
+│  (JSON file: episodic_memory.json)      │
+│  Task summaries, conversation history   │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│          SEMANTIC MEMORY                │
+│  (SQLite + Nomic-Embed)                 │
+│  User facts, knowledge base             │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│         PROCEDURAL MEMORY               │
+│  (SQLite + Nomic-Embed)                 │
+│  How-to guides, learned procedures      │
+└─────────────────────────────────────────┘
+```
+
+### Chat Flow (P-V-E-R Pipeline)
+```
+1. INPUT → Safety Check (IntentClassifier + SafetyGuard)
+2. PLAN → PlanningService.CreatePlanAsync()
+3. VALIDATE → TaskGovernor.ValidateAction()
+4. EXECUTE → Semantic Kernel chat completion
+5. REFLECT → ReflectionService.ReflectAsync()
+6. LOG → VectorLogger (decisions, plans, reflections)
 ```
 
 ## 5. Telemetry (The Nervous System)
 
-### Audio Pipeline
-```
-MicrophoneListener (NAudio) 
-    → RMS Calculation
-    → UDP Broadcast to localhost:9999
-    → MainWindow UDP Listener
-    → Polyline Graph (60fps capped)
-    → HolographicFace lip-sync
-```
-
 ### Vision Pipeline
 ```
-Worker.RunVisionLoop (every 3s)
+Worker.RunVisionLoop (every 5s)
     → Screen Capture (System.Drawing)
-    → Base64 encode
-    → LLaVA inference (Ollama)
-    → Response routed to MainWindow chat
+    → VisualAttentionService.HasSignificantChange()
+    → If changed: Downsample → LLaVA inference
+    → Response added to Working Memory
 ```
 
-### Mood Pipeline
+### Observability Pipeline
 ```
-User Input (text or audio) 
-    → MoodManager.AnalyzeSentimentAsync
-    → Keyword matching (hostile, concerned, amused, calculating)
-    → OnMoodChanged event
-    → HolographicFace.SetMood(r, g, b, spike, confusion)
-    → Native UpdateMood → GPU shader constants
+ChatAsync execution
+    → TelemetryService.StartTimer("ChatAsync")
+    → VectorLogger.LogDecision() on safety checks
+    → VectorLogger.LogPlan() on planning
+    → VectorLogger.LogReflection() on reflection
+    → TelemetryService.StopTimer("ChatAsync")
+
+Output: %LOCALAPPDATA%\VectorAI\logs\vector_YYYY-MM-DD.jsonl
 ```
 
-## 6. Native Rendering Pipeline
-```
-1. HolographicFace.OnRendering (WPF CompositionTarget)
-2. Lock WriteableBitmap backbuffer
-3. Call RenderFace(time, blink, mouth, buffer) via P/Invoke
-4. C++ clears render target, updates constant buffer
-5. Draw 900 vertices as point cloud
-6. Copy staging texture → CPU buffer
-7. Unlock bitmap, mark dirty rect
-8. WPF renders at vsync
-```
-
-## 7. Project Dependencies
+## 6. Project Dependencies
 
 ```
 Vector.HUD
@@ -231,7 +252,7 @@ Vector.Core
     ├── Microsoft.SemanticKernel
     ├── OllamaSharp
     ├── Microsoft.Data.Sqlite
-    └── System.Numerics.Tensors
+    └── System.Text.Json
 
 Vector.Native
     ├── DirectX 11 (d3d11.lib)

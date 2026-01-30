@@ -1,6 +1,6 @@
 # VECTOR: Local Synthetic Intelligence (SI)
 
-**Version:** 1.1.0 (Alpha)  
+**Version:** 2.0.0 (Evolution Update)  
 **Framework:** .NET 10 (WPF + Semantic Kernel)  
 **Local Inference:** Ollama (Llama 3, LLaVA, Nomic-Embed)  
 **Graphics Engine:** DirectX 11 Native C++ Rendering  
@@ -13,10 +13,13 @@ VECTOR is a **Synthetic Intelligence** designed to run locally on Windows 11. Un
 - **Hands** — File I/O, Shell execution, Developer Tools
 - **Ears** — Offline Speech-to-Text (Vosk) + UDP Audio Telemetry
 - **Voice** — Offline Text-to-Speech (Piper TTS)
-- **Eyes** — Screen Analysis (LLaVA Vision Model)
-- **Memory** — RAG/Vector Database (SQLite + Nomic-Embed)
+- **Eyes** — Screen Analysis with Visual Attention (Delta Detection + ROI)
+- **Memory** — Stratified Memory System (Working/Episodic/Semantic/Procedural)
 - **Face** — GPU-Accelerated Holographic Head (DirectX 11 C++ DLL)
 - **Emotions** — Real-time Mood System with Visual Feedback
+- **Self-Model** — Persistent internal state with confidence tracking
+- **Reflection** — Meta-cognitive loop for self-improvement
+- **Safety Layer** — Intent classification with Block/Flag/Allow decisions
 
 Crucially, VECTOR implements a **Human-in-the-Loop (HITL)** architecture for all high-risk operations. It cannot modify files or execute system commands without explicit, interactive user approval.
 
@@ -26,19 +29,41 @@ Crucially, VECTOR implements a **Human-in-the-Loop (HITL)** architecture for all
 - Powered by **Microsoft Semantic Kernel** with automatic function calling
 - Uses **Llama 3** (via Ollama) for reasoning and conversation
 - Uses **Nomic-Embed-Text** for long-term memory encoding
-- Uses **LLaVA** for visual screen analysis (periodic screen capture)
+- Uses **LLaVA** for visual screen analysis (with delta detection)
+- **Planning Service** — Chain-of-thought task decomposition (P-V-E-R pipeline)
 - **Mood Manager** — Sentiment analysis influences visual state
+
+### 🧬 Self-Model & Reflection (NEW in v2.0)
+- **SelfState** — Tracks `ActiveTask`, `TaskPhase`, `Confidence`, `LastError`
+- **Reflection Loop** — Post-interaction analysis with success scoring
+- **Working Memory** — Short-term context buffer (visual, reflections)
 
 ### 🛡️ The Conscience (Safety System)
 VECTOR is capable of dangerous operations. To prevent catastrophe:
-- **Approval Window:** A dedicated WPF modal intercepts all high-risk kernel functions
-- **Diff View:** Users see a side-by-side "Old vs New" comparison before allowing file writes
-- **Command Vetting:** Shell commands are presented clearly for authorization
-- **Debounce Logic:** Prevents accidental double-confirmations
+- **Intent Classifier** — Categorizes requests as Benign/Sensitive/Dangerous
+- **Safety Guard** — Evaluates Block/Flag/Allow decisions
+- **Task Governor** — Loop detection and command blacklisting
+- **Approval Window** — A dedicated WPF modal intercepts all high-risk kernel functions
+- **Diff View** — Users see a side-by-side "Old vs New" comparison before allowing file writes
+- **User Confirmation** — Flagged actions require explicit approval
 
-### 💾 Long-Term Memory (RAG)
-- **SQLite Vector Store:** Stores user facts and conversations locally
-- **Semantic Recall:** Automatically queries the database for relevant context before answering questions
+### 💾 Stratified Memory System (NEW in v2.0)
+| Tier | Purpose | Persistence |
+|------|---------|-------------|
+| **Working** | Short-term context (visual, reflections) | In-memory (FIFO) |
+| **Episodic** | Task/conversation summaries | JSON file |
+| **Semantic** | User facts and knowledge | SQLite + Nomic-Embed |
+| **Procedural** | How-to guides and procedures | SQLite + Nomic-Embed |
+
+### �️ Visual Attention (NEW in v2.0)
+- **Delta Detection** — Skips unchanged frames (SHA256 hash comparison)
+- **ROI Extraction** — Focuses on key screen regions
+- **Downsampling** — Resizes frames for faster LLaVA processing
+
+### 📊 Observability (NEW in v2.0)
+- **Structured Logging** — JSON Lines format to `%LOCALAPPDATA%\VectorAI\logs\`
+- **Telemetry Metrics** — Latency tracking, error counts, request aggregation
+- **Decision Logging** — Safety decisions, plans, reflections all recorded
 
 ### 🎛️ The HUD (Heads-Up Display)
 - **GPU-Rendered Face:** DirectX 11 holographic head with particle/sphere rendering
@@ -89,7 +114,6 @@ VECTOR is capable of dangerous operations. To prevent catastrophe:
     ```
 3. Build the Native DLL (if not using MSBuild auto-build):
     ```powershell
-    # Build Vector.Native C++ project via Visual Studio or MSBuild
     msbuild Vector.Native\Vector.Native.vcxproj /p:Configuration=Release /p:Platform=x64
     ```
 4. Run the HUD:
@@ -101,56 +125,61 @@ VECTOR is capable of dangerous operations. To prevent catastrophe:
     dotnet run --project Vector.Service
     ```
 
-### Usage
-- **Talk:** Type in the chat window or speak (if Service is running)
-- **Commands:**
-    - *"Create a file called plan.txt with a list of steps."* → File Plugin
-    - *"Open Notepad."* → Shell Plugin
-    - *"Remember that I prefer dark mode."* → Memory Plugin
-    - *"Calculate the derivative of x^2 at x=3"* → Math Plugin
-    - *"Convert 1024 KB to MB"* → Computer Science Plugin
-
 ---
 
 ## 📂 Project Structure
 
 | Project | Description |
 |---------|-------------|
-| **`Vector.Core`** | The "Brain" — Semantic Kernel, Plugins, Mood Manager, LLM connectors |
-| **`Vector.HUD`** | The "Face" — WPF application, Holographic Face, Safety Dialogs, Graphing |
-| **`Vector.Service`** | The "Body" — Background worker, Microphone listener (Vosk), Piper TTS, Screen capture |
-| **`Vector.Native`** | The "Skin" — DirectX 11 C++ DLL for GPU-accelerated face rendering |
+| **`Vector.Core`** | The "Brain" — Semantic Kernel, Plugins, Services, Safety Layer |
+| **`Vector.HUD`** | The "Face" — WPF application, Holographic Face, Safety Dialogs |
+| **`Vector.Service`** | The "Body" — Background worker, Voice, Vision, Visual Attention |
+| **`Vector.Native`** | The "Skin" — DirectX 11 C++ DLL for GPU-accelerated rendering |
 
 ### Key Files
 ```
 Vector.Core/
 ├── VectorBrain.cs           # Main orchestrator (Semantic Kernel host)
 ├── MoodManager.cs           # Emotional state machine + sentiment analysis
+├── Models/
+│   ├── SelfState.cs         # Agent internal state model
+│   └── ReflectionModels.cs  # Reflection context and results
+├── Services/
+│   ├── SelfStateService.cs  # Persistent state management
+│   ├── ReflectionService.cs # Post-interaction analysis
+│   ├── PlanningService.cs   # Chain-of-thought planning
+│   ├── TaskGovernor.cs      # Loop detection + safety limits
+│   ├── MemoryService.cs     # Stratified memory management
+│   ├── IntentClassifier.cs  # Intent categorization
+│   ├── SafetyGuard.cs       # Block/Flag/Allow decisions
+│   ├── VectorLogger.cs      # Structured JSON logging
+│   └── TelemetryService.cs  # Latency and error tracking
 ├── Plugins/
 │   ├── ShellPlugin.cs       # Terminal command execution
 │   ├── FileSystemPlugin.cs  # File I/O operations
 │   ├── MemoryPlugin.cs      # RAG memory interface
 │   ├── DeveloperConsolePlugin.cs  # Build, patch, error parsing
 │   ├── MathPlugin.cs        # Advanced math + calculus
-│   ├── ComputerSciencePlugin.cs   # Conversions, hashing, bitwise
+│   ├── ComputerSciencePlugin.cs   # Conversions, hashing
 │   └── WebSearchPlugin.cs   # Local search endpoint
 
 Vector.HUD/
-├── MainWindow.xaml(.cs)     # Main UI + UDP listener + health monitoring
-├── HolographicFace.xaml(.cs)# Native interop for GPU face rendering
-├── ApprovalWindow.xaml(.cs) # Safety modal for HITL operations
+├── MainWindow.xaml(.cs)     # Main UI + UDP listener
+├── HolographicFace.xaml(.cs)# Native interop for GPU face
+├── ApprovalWindow.xaml(.cs) # Safety modal for HITL
 
 Vector.Service/
 ├── Worker.cs                # Background service orchestrator
 ├── MicrophoneListener.cs    # Vosk STT + audio processing
 ├── PiperVoiceService.cs     # Local neural TTS
+├── VisualAttentionService.cs# Delta detection + ROI extraction
 
 Vector.Native/
-├── dllmain.cpp              # DirectX 11 holographic sphere renderer
+├── dllmain.cpp              # DirectX 11 holographic sphere
 ```
 
 ## ⚠️ Security Notice
-This software allows an LLM to execute code on your machine. While the **ApprovalWindow** is a robust gatekeeper, never disable the safety callbacks in `VectorBrain.cs` unless you are running in a sandboxed environment.
+This software allows an LLM to execute code on your machine. The **Safety Layer** (IntentClassifier + SafetyGuard + ApprovalWindow) provides multi-tier protection. Never disable the safety callbacks in `VectorBrain.cs` unless you are running in a sandboxed environment.
 
 ---
 

@@ -4,7 +4,63 @@ All notable changes to VECTOR are documented in this file.
 
 ---
 
-## [v1.1.0] - 2026-01-30 (The "Embodiment" Update)
+## [v2.0.0] - 2026-01-30 (The "Evolution" Update)
+
+### ✨ New Features
+
+#### Phase 1: Self-Model & State
+- **SelfState Model:** Tracks `ActiveTask`, `TaskPhase`, `Confidence`, `LastError`, `Mood`
+- **SelfStateService:** Persistent JSON-based state management
+- **MoodManager Integration:** Mood changes sync to SelfState
+
+#### Phase 2: Reflection Loop
+- **ReflectionService:** Post-interaction analysis via LLM
+- **ReflectionModels:** `ReflectionContext` and `ReflectionResult` for structured analysis
+- **Meta-cognition:** Agent evaluates its own responses with success scoring
+
+#### Phase 3: Task Planner & Governor
+- **PlanningService:** Chain-of-thought task decomposition
+- **TaskGovernor:** Loop detection (max 3 repetitions) and command blacklisting
+- **P-V-E-R Pipeline:** Plan → Validate → Execute → Reflect workflow
+
+#### Phase 4: Memory Stratification
+- **MemoryService:** Unified interface for all memory tiers
+- **Working Memory:** In-memory FIFO buffer (~10 items)
+- **Episodic Memory:** JSON-persisted task/conversation summaries
+- **Semantic Memory:** SQLite + Nomic-Embed for user facts
+- **Procedural Memory:** SQLite + Nomic-Embed for how-to guides
+
+#### Phase 5: Visual Attention
+- **VisualAttentionService:** Optimized vision processing
+- **Delta Detection:** SHA256 hash comparison skips unchanged frames
+- **ROI Extraction:** Focuses on key screen regions (center, top-right)
+- **Downsampling:** Resizes frames to 800px for faster LLaVA
+
+#### Phase 6: Safety & Intent
+- **IntentClassifier:** Categorizes input as Benign/Sensitive/Dangerous
+- **SafetyGuard:** Evaluates Block/Flag/Allow decisions
+- **HITL Flow:** Flagged actions require explicit user confirmation
+- **Dangerous Keywords:** Blocks `rm -rf`, `format`, `delete all`, etc.
+
+#### Phase 7: Observability
+- **VectorLogger:** Structured JSON logging to `%LOCALAPPDATA%\VectorAI\logs\`
+- **TelemetryService:** Latency tracking, error counts, request aggregation
+- **Decision Logging:** Safety decisions, plans, reflections all recorded
+
+### 🛠️ Technical Improvements
+- **VectorBrain overhaul:** Integrated all 7 services with proper DI
+- **Safety-first architecture:** Safety check runs BEFORE planning
+- **Optimized vision loop:** 5s intervals with delta detection
+- **Improved logging:** All key decisions are logged in JSONL format
+
+### 📊 New Metrics
+- Request latency (average, max)
+- Error rate tracking
+- Structured event types: DECISION, PLAN, REFLECTION, ERROR
+
+---
+
+## [v1.1.0] - 2026-01-28 (The "Embodiment" Update)
 
 ### ✨ New Features
 - **Native GPU Rendering:** Replaced software renderer with DirectX 11 C++ DLL (`Vector.Native`)
@@ -83,6 +139,15 @@ All notable changes to VECTOR are documented in this file.
 ---
 
 ## Roadmap
+
+### Completed ✅
+- [x] Self-Model & State (Phase 1)
+- [x] Reflection Loop (Phase 2)
+- [x] Task Planner & Governor (Phase 3)
+- [x] Memory Stratification (Phase 4)
+- [x] Visual Attention (Phase 5)
+- [x] Safety & Intent (Phase 6)
+- [x] Observability (Phase 7)
 
 ### Planned Features
 - [ ] Multi-model orchestration (specialized models per task)

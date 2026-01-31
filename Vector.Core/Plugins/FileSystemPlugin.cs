@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.ComponentModel;
 using Microsoft.SemanticKernel;
+using Vector.Core.Services;
 
 namespace Vector.Core.Plugins;
 
@@ -15,10 +16,12 @@ public class FileWriteRequest
 public class FileSystemPlugin
 {
     private readonly Func<FileWriteRequest, Task<bool>> _approvalCallback;
+    private readonly IVectorVerifier? _verifier;
 
-    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback)
+    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _verifier = verifier;
     }
 
     // Read file synchronously (safe, small files only)
@@ -46,6 +49,15 @@ public class FileSystemPlugin
         if (string.IsNullOrWhiteSpace(path)) return "ERROR: Invalid path";
 
         var req = new FileWriteRequest { Path = path, Content = content };
+
+        // 1. Snapshot & Hash (Verification Prep)
+        string? originalHash = null;
+        DateTime timestamp = DateTime.UtcNow;
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(req);
+        }
+
         bool allowed = false;
         try
         {
@@ -57,6 +69,19 @@ public class FileSystemPlugin
         }
 
         if (!allowed) return "ABORTED: Write not permitted by user.";
+
+        // 2. Verify (VECTOR-VERIFIER)
+        if (_verifier != null && originalHash != null)
+        {
+            try
+            {
+                _verifier.VerifyAction(req, originalHash, timestamp);
+            }
+            catch (Exception ex)
+            {
+                return $"SECURITY ALERT: Verification failed. Execution blocked. Reason: {ex.Message}";
+            }
+        }
 
         try
         {

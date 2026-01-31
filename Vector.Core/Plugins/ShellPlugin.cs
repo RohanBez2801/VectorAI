@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.ComponentModel;
 using Microsoft.SemanticKernel;
+using Vector.Core.Services;
 
 namespace Vector.Core.Plugins;
 
@@ -15,10 +16,12 @@ public class ShellCommandRequest
 public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
+    private readonly IVectorVerifier? _verifier;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _verifier = verifier;
     }
 
     [KernelFunction]
@@ -29,11 +32,32 @@ public class ShellPlugin
     {
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
 
-        // 1. HITL Safety Check
+        // 1. Snapshot & Hash
+        string? originalHash = null;
+        DateTime timestamp = DateTime.UtcNow;
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(request);
+        }
+
+        // 2. HITL Safety Check
         bool allowed = await _approvalCallback(request).ConfigureAwait(false);
         if (!allowed) return "ABORTED: User denied shell command execution.";
 
-        // 2. Execute
+        // 3. Verify
+        if (_verifier != null && originalHash != null)
+        {
+            try
+            {
+                _verifier.VerifyAction(request, originalHash, timestamp);
+            }
+            catch (Exception ex)
+            {
+                return $"SECURITY ALERT: Verification failed. Execution blocked. Reason: {ex.Message}";
+            }
+        }
+
+        // 4. Execute
         try
         {
             var startInfo = new ProcessStartInfo

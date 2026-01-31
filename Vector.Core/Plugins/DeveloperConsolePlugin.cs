@@ -2,7 +2,10 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Linq;
+using System.IO;
 using Microsoft.SemanticKernel;
+using Vector.Core.Services;
 
 namespace Vector.Core.Plugins;
 
@@ -10,13 +13,16 @@ public class DeveloperConsolePlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _shellApproval;
     private readonly Func<FileWriteRequest, Task<bool>> _fileApproval;
+    private readonly IVectorVerifier? _verifier;
 
     public DeveloperConsolePlugin(
         Func<ShellCommandRequest, Task<bool>> shellApproval,
-        Func<FileWriteRequest, Task<bool>> fileApproval)
+        Func<FileWriteRequest, Task<bool>> fileApproval,
+        IVectorVerifier? verifier = null)
     {
         _shellApproval = shellApproval ?? throw new ArgumentNullException(nameof(shellApproval));
         _fileApproval = fileApproval ?? throw new ArgumentNullException(nameof(fileApproval));
+        _verifier = verifier;
     }
 
     [KernelFunction]
@@ -35,15 +41,27 @@ public class DeveloperConsolePlugin
         }
 
         // Safety Check
-        var approvalReq = new ShellCommandRequest 
-        { 
-            Command = builder, 
-            Arguments = args 
+        var approvalReq = new ShellCommandRequest
+        {
+            Command = builder,
+            Arguments = args
         };
-        
+
+        // Snapshot
+        string? originalHash = null;
+        DateTime timestamp = DateTime.UtcNow;
+        if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+
         if (!await _shellApproval(approvalReq))
         {
             return "ABORTED: User denied build command.";
+        }
+
+        // Verify
+        if (_verifier != null && originalHash != null)
+        {
+            try { _verifier.VerifyAction(approvalReq, originalHash, timestamp); }
+            catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
         try
@@ -58,7 +76,7 @@ public class DeveloperConsolePlugin
                 CreateNoWindow = true,
                 WorkingDirectory = AppContext.BaseDirectory
             };
-            
+
             using var process = new Process { StartInfo = startInfo };
             process.Start();
 
@@ -91,15 +109,15 @@ public class DeveloperConsolePlugin
             @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe",
              @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
         };
-        
-        foreach(var p in paths) 
+
+        foreach(var p in paths)
         {
             if(File.Exists(p)) return p;
         }
-        
-        // Final fallback: try to resolve from 'where msbuild' via shell? 
+
+        // Final fallback: try to resolve from 'where msbuild' via shell?
         // For now, return dotnet to try standard CLI
-        return "dotnet"; 
+        return "dotnet";
     }
 
     [KernelFunction]
@@ -112,17 +130,17 @@ public class DeveloperConsolePlugin
 
         var lines = buildOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var errors = lines.Where(l => l.Contains(" Error ") || l.Contains(": error"));
-        
+
         if (!errors.Any()) return "No specific errors found in output.";
-        
+
         return "Parsed Errors:\n" + string.Join("\n", errors);
     }
 
     [KernelFunction]
     [Description("Patches a file by replacing a specific string with new content. CAUTION: Requires Approval.")]
     public async Task<string> PatchFile(
-        [Description("Absolute path to the file.")] string filePath, 
-        [Description("The exact code segment to replace.")] string targetContent, 
+        [Description("Absolute path to the file.")] string filePath,
+        [Description("The exact code segment to replace.")] string targetContent,
         [Description("The new code segment to insert.")] string replacementContent)
     {
         if (!File.Exists(filePath)) return $"ERROR: File not found: {filePath}";
@@ -142,15 +160,27 @@ public class DeveloperConsolePlugin
         }
 
         // 2. Prepare Preview for Approval
-        // We act like we are overwriting the whole file for the approval window, 
+        // We act like we are overwriting the whole file for the approval window,
         // to show the Before/After diff provided by ApprovalWindow logic.
         string newContent = currentContent.Replace(targetContent, replacementContent);
-        
+
         var req = new FileWriteRequest { Path = filePath, Content = newContent };
-        
+
+        // Snapshot
+        string? originalHash = null;
+        DateTime timestamp = DateTime.UtcNow;
+        if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+
         if (!await _fileApproval(req))
         {
             return "ABORTED: User denied patch.";
+        }
+
+        // Verify
+        if (_verifier != null && originalHash != null)
+        {
+            try { _verifier.VerifyAction(req, originalHash, timestamp); }
+            catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
         try

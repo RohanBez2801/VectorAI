@@ -9,6 +9,7 @@ public interface IVectorLogger
     void LogDecision(string type, string input, string decision, string reason);
     void LogPlan(string userGoal, string plan);
     void LogReflection(float score, string analysis);
+    void LogVerification(string status, string details);
     void LogError(string context, string error);
 }
 
@@ -22,7 +23,7 @@ public class VectorLogger : IVectorLogger
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _logDir = Path.Combine(appData, "VectorAI", "logs");
         if (!Directory.Exists(_logDir)) Directory.CreateDirectory(_logDir);
-        
+
         _currentLogFile = Path.Combine(_logDir, $"vector_{DateTime.Now:yyyy-MM-dd}.jsonl");
     }
 
@@ -60,6 +61,18 @@ public class VectorLogger : IVectorLogger
             eventType = "REFLECTION",
             score,
             analysis = Truncate(analysis, 300)
+        };
+        WriteLog(entry);
+    }
+
+    public void LogVerification(string status, string details)
+    {
+        var entry = new
+        {
+            timestamp = DateTime.UtcNow.ToString("o"),
+            eventType = "VERIFICATION",
+            status,
+            details = Truncate(details, 500)
         };
         WriteLog(entry);
     }

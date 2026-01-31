@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using OllamaSharp;
+using Vector.Core.Services;
 
 namespace Vector.Core;
 
@@ -18,20 +19,22 @@ public enum VectorMood
 public class MoodManager
 {
     private readonly Kernel _kernel;
+    private readonly ISelfStateService? _stateService;
     public VectorMood CurrentMood { get; private set; } = VectorMood.Neutral;
 
     public event Action<VectorMood>? OnMoodChanged;
 
     // Thresholds
     private const double RmsConcernThreshold = 0.5; // If user yells?
-    private const double RmsHostileThreshold = 0.8; 
+    private const double RmsHostileThreshold = 0.8;
 
     // Decay logic
     private DateTime _lastInteraction = DateTime.MinValue;
 
-    public MoodManager(Kernel kernel)
+    public MoodManager(Kernel kernel, ISelfStateService? stateService = null)
     {
         _kernel = kernel;
+        _stateService = stateService;
     }
 
     public void UpdateAudioRms(double rms)
@@ -65,6 +68,7 @@ public class MoodManager
         if (CurrentMood != oldMood)
         {
             _lastInteraction = DateTime.Now;
+            _stateService?.UpdateState(s => s.Mood = CurrentMood);
             OnMoodChanged?.Invoke(CurrentMood);
         }
     }
@@ -73,6 +77,7 @@ public class MoodManager
     {
         if (CurrentMood == mood) return;
         CurrentMood = mood;
+        _stateService?.UpdateState(s => s.Mood = mood);
         OnMoodChanged?.Invoke(CurrentMood);
     }
 
@@ -107,7 +112,7 @@ public class MoodManager
             SetMood(VectorMood.Calculating);
             return;
         }
-        
+
         // Default decay to Neutral is handled by the MoodManager decay logic or explicit Neutral set by caller.
     }
 }

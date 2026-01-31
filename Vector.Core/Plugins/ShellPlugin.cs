@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.ComponentModel;
 using Microsoft.SemanticKernel;
+using Vector.Core.Services;
 
 namespace Vector.Core.Plugins;
 
@@ -15,10 +16,12 @@ public class ShellCommandRequest
 public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
+    private readonly ITaskGovernor? _governor;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -28,6 +31,17 @@ public class ShellPlugin
         [Description("The arguments for the command (e.g., 'google.com', 'C:\\test.txt').")] string arguments = "")
     {
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
+        string input = $"{command} {arguments}";
+
+        // 0. Governor Check (Automated Policy)
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("Shell", input);
+            if (status == ApprovalStatus.Denied)
+            {
+                return "BLOCKED: Action blocked by TaskGovernor (Policy/Loop).";
+            }
+        }
 
         // 1. HITL Safety Check
         bool allowed = await _approvalCallback(request).ConfigureAwait(false);
@@ -58,6 +72,7 @@ public class ShellPlugin
             if (!string.IsNullOrEmpty(error))
                 return $"EXIT CODE {process.ExitCode}: {output}\nERROR: {error}";
 
+            _governor?.RecordAction("Shell", input);
             return $"SUCCESS:\n{output}";
         }
         catch (Exception ex)

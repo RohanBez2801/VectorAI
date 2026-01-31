@@ -22,7 +22,7 @@ public class VectorBrain : IDisposable
     private string? _dbPath;
     private OllamaApiClient _ollamaClient;
     private bool _disposed;
-    
+
     // Short-term visual context (one-line summary of last screen)
     public string VisualContext { get; private set; } = string.Empty;
     private string _currentVisualContext = string.Empty;
@@ -49,7 +49,7 @@ public class VectorBrain : IDisposable
         );
         _history = new ChatHistory("You are VECTOR, a Local Synthetic Intelligence running on Windows 11. You have access to the file system, shell, and internet via plugins.");
     }
-    
+
     public MoodManager? MoodManager { get; private set; }
 
     public async Task InitAsync(
@@ -64,15 +64,15 @@ public class VectorBrain : IDisposable
         _stateService.LoadState();
 
         _governor = new TaskGovernor();
-        
+
         // Initialize Safety Layer
         var classifier = new IntentClassifier();
         _safetyGuard = new SafetyGuard(classifier, _governor);
-        
+
         // Initialize Observability
         _logger = new VectorLogger();
         _telemetry = new TelemetryService();
-        
+
         var builder = Kernel.CreateBuilder();
 
         // Register Services
@@ -91,7 +91,7 @@ public class VectorBrain : IDisposable
         var chatService = _ollamaClient.AsChatCompletionService();
         _reflectionService = new ReflectionService(chatService);
         _planner = new PlanningService(chatService);
-        
+
         builder.Services.AddSingleton(_reflectionService);
         builder.Services.AddSingleton(_planner);
 
@@ -118,15 +118,15 @@ public class VectorBrain : IDisposable
         builder.Services.AddSingleton(_memoryService);
 
         // 5. Register Plugins
-        
+
         // Core System Tools
         builder.Plugins.AddFromObject(new FileSystemPlugin(fileApproval), "FileSystem");
-        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval), "Shell");
-        
+        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval, _governor), "Shell");
+
         // University Upgrade Tools
         builder.Plugins.AddFromObject(new MathPlugin(), "Math");
         builder.Plugins.AddFromObject(new ComputerSciencePlugin(), "ComputerScience");
-        
+
         // Self-Development Tools
         builder.Plugins.AddFromObject(new DeveloperConsolePlugin(shellApproval, fileApproval), "DeveloperConsole");
 
@@ -160,7 +160,7 @@ public class VectorBrain : IDisposable
     {
         // Start telemetry timer
         _telemetry?.StartTimer("ChatAsync");
-        
+
         try
         {
             // Update State: Active
@@ -191,13 +191,13 @@ public class VectorBrain : IDisposable
                     case SafetyDecision.Flag:
                         // Request user confirmation
                         OnReplyGenerated?.Invoke($"[CONFIRMATION REQUIRED]: {safetyResult.Reason}");
-                        
+
                         bool approved = false;
                         if (_userConfirmation != null)
                         {
                             approved = await _userConfirmation(input);
                         }
-                        
+
                         if (!approved)
                         {
                             OnReplyGenerated?.Invoke("[Action cancelled by user.]");
@@ -258,21 +258,21 @@ public class VectorBrain : IDisposable
             // 4. Generate Response
             // Triggers "Calculating" state
             MoodManager?.AnalyzeSentimentAsync(input); // Fire and forget analysis/state set
-            
+
             _stateService?.UpdateState(s => s.TaskPhase = "Executing");
 
             var response = await _kernel.GetRequiredService<IChatCompletionService>()
                 .GetChatMessageContentAsync(_history, kernel: _kernel);
-            
+
             // Record the action with governor
             _governor?.RecordAction("Chat", response.Content!);
 
             _history.AddAssistantMessage(response.Content!);
             OnReplyGenerated?.Invoke(response.Content!);
-            
+
             // Reset to Neutral after speaking
             MoodManager?.SetMood(VectorMood.Neutral);
-            
+
             _stateService?.UpdateState(s => s.TaskPhase = "Reflecting");
 
             // 5. REFLECTION LOOP
@@ -288,8 +288,8 @@ public class VectorBrain : IDisposable
                 var reflectionResult = await _reflectionService.ReflectAsync(new Vector.Core.Models.ReflectionContext
                 {
                     UserGoal = input,
-                    RecentHistory = recentHistory, 
-                    WasToolUsed = false 
+                    RecentHistory = recentHistory,
+                    WasToolUsed = false
                 });
 
                 // Update state based on reflection
@@ -297,17 +297,17 @@ public class VectorBrain : IDisposable
                     s.Confidence = reflectionResult.SuccessScore;
                     s.LastError = reflectionResult.SuccessScore < 0.5f ? reflectionResult.Analysis : s.LastError;
                 });
-                
+
                 // Log reflection
                 _logger?.LogReflection(reflectionResult.SuccessScore, reflectionResult.Analysis);
-                
+
                 // Store reflection as working memory context
                 _memoryService?.AddToWorkingMemory($"[Reflection]: Score={reflectionResult.SuccessScore:F2}");
-                
+
                 // If there are learnings, optionally save as semantic memory
                 if (!string.IsNullOrEmpty(reflectionResult.Learnings))
                 {
-                    // await _memoryService?.SaveFactAsync(reflectionResult.Learnings); 
+                    // await _memoryService?.SaveFactAsync(reflectionResult.Learnings);
                 }
             }
 
@@ -319,18 +319,18 @@ public class VectorBrain : IDisposable
                 s.ActiveTask = "Idle";
                 s.TaskPhase = "Waiting for Input";
             });
-            
+
             _telemetry?.StopTimer("ChatAsync");
         }
         catch (Exception ex)
         {
              // Determine if it's a connection error
              string errorMsg = "My brain is offline. Please check the neural link (Ollama).";
-             if (ex.Message.Contains("refused") || ex.InnerException?.Message.Contains("refused") == true) 
+             if (ex.Message.Contains("refused") || ex.InnerException?.Message.Contains("refused") == true)
              {
                  errorMsg = "I cannot reach my logic cores. Is Ollama running?";
              }
-             
+
              OnReplyGenerated?.Invoke(errorMsg);
              MoodManager?.SetMood(VectorMood.Concerned);
         }
@@ -401,19 +401,19 @@ public class VectorBrain : IDisposable
                 using var llavaClient = new OllamaApiClient(uriString: "http://localhost:11434", defaultModel: "llava");
                 var llavaService = llavaClient.AsChatCompletionService();
                 var visualHistory2 = new ChatHistory("You are a visual assistant (LLaVA). Describe the active windows and any visible code errors in the provided image.");
-                
+
                 // Construct message with image
                 var msg = new ChatMessageContent(AuthorRole.User, prompt);
-                // Note: Semantic Kernel Image handling might vary by version. 
+                // Note: Semantic Kernel Image handling might vary by version.
                 // Using raw prompt injection or SK specific ImageContent if supported.
                 // For simplicity with OllamaSharp, we append the base64 context in text or use specific API if exposed.
                 // Assuming OllamaSharp handles standard SK multi-modal via content metadata or text description.
-                
+
                 // Fallback approach for OllamaSharp specifically:
                 visualHistory2.AddUserMessage($"{prompt} [IMAGE_DATA:{base64}]"); // Pseudo-code representation for passing image
-                
+
                 var resp = await llavaService.GetChatMessageContentAsync(visualHistory2, kernel: _kernel);
-                
+
                 if (resp != null && !string.IsNullOrEmpty(resp.Content))
                 {
                     _currentVisualContext = resp.Content.Trim();

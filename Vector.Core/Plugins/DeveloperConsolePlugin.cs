@@ -14,15 +14,18 @@ public class DeveloperConsolePlugin
     private readonly Func<ShellCommandRequest, Task<bool>> _shellApproval;
     private readonly Func<FileWriteRequest, Task<bool>> _fileApproval;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
     public DeveloperConsolePlugin(
         Func<ShellCommandRequest, Task<bool>> shellApproval,
         Func<FileWriteRequest, Task<bool>> fileApproval,
-        IVectorVerifier? verifier = null)
+        IVectorVerifier? verifier = null,
+        ITaskGovernor? governor = null)
     {
         _shellApproval = shellApproval ?? throw new ArgumentNullException(nameof(shellApproval));
         _fileApproval = fileApproval ?? throw new ArgumentNullException(nameof(fileApproval));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -38,6 +41,16 @@ public class DeveloperConsolePlugin
         {
             builder = msbuildPath;
             args = path + " /p:Configuration=Release /p:Platform=x64"; // Default to Release/x64 for Vector
+        }
+
+        // 0. Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("DeveloperConsole", $"{builder} {args}");
+            if (status == ApprovalStatus.Denied)
+            {
+                return "BLOCKED: Action denied by TaskGovernor (Policy Violation).";
+            }
         }
 
         // Safety Check
@@ -144,6 +157,16 @@ public class DeveloperConsolePlugin
         [Description("The new code segment to insert.")] string replacementContent)
     {
         if (!File.Exists(filePath)) return $"ERROR: File not found: {filePath}";
+
+        // 0. Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("DeveloperConsole", filePath);
+            if (status == ApprovalStatus.Denied)
+            {
+                return "BLOCKED: Action denied by TaskGovernor (Policy Violation).";
+            }
+        }
 
         // 1. Read to verify target exists
         string currentContent = await File.ReadAllTextAsync(filePath);

@@ -17,11 +17,13 @@ public class FileSystemPlugin
 {
     private readonly Func<FileWriteRequest, Task<bool>> _approvalCallback;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
-    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
         _verifier = verifier;
+        _governor = governor;
     }
 
     // Read file synchronously (safe, small files only)
@@ -58,6 +60,16 @@ public class FileSystemPlugin
             originalHash = _verifier.ComputeHash(req);
         }
 
+        // 2. Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("FileSystem", $"{path} {content}");
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"ABORTED: Task Governor denied action. Status: {status}";
+            }
+        }
+
         bool allowed = false;
         try
         {
@@ -70,7 +82,7 @@ public class FileSystemPlugin
 
         if (!allowed) return "ABORTED: Write not permitted by user.";
 
-        // 2. Verify (VECTOR-VERIFIER)
+        // 3. Verify (VECTOR-VERIFIER)
         if (_verifier != null && originalHash != null)
         {
             try

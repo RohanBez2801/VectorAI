@@ -17,11 +17,13 @@ public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -31,6 +33,16 @@ public class ShellPlugin
         [Description("The arguments for the command (e.g., 'google.com', 'C:\\test.txt').")] string arguments = "")
     {
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
+
+        // 0. Governor Check (Automated Policy Enforcement)
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("Shell", $"{command} {arguments}");
+            if (status == ApprovalStatus.Denied)
+            {
+                return "BLOCKED: Action denied by TaskGovernor (Policy Violation).";
+            }
+        }
 
         // 1. Snapshot & Hash
         string? originalHash = null;

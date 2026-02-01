@@ -17,11 +17,13 @@ public class FileSystemPlugin
 {
     private readonly Func<FileWriteRequest, Task<bool>> _approvalCallback;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
-    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
         _verifier = verifier;
+        _governor = governor;
     }
 
     // Read file synchronously (safe, small files only)
@@ -47,6 +49,16 @@ public class FileSystemPlugin
     public async Task<string> WriteFileAsync([Description("Path to the file to write.")] string path, [Description("File content to write.")] string content)
     {
         if (string.IsNullOrWhiteSpace(path)) return "ERROR: Invalid path";
+
+        // 0. Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("FileSystem", path);
+            if (status == ApprovalStatus.Denied)
+            {
+                return "BLOCKED: Action denied by TaskGovernor (Policy Violation).";
+            }
+        }
 
         var req = new FileWriteRequest { Path = path, Content = content };
 

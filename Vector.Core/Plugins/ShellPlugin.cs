@@ -16,11 +16,13 @@ public class ShellCommandRequest
 public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
+    private readonly ITaskGovernor _governor;
     private readonly IVectorVerifier? _verifier;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, ITaskGovernor governor, IVectorVerifier? verifier = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _governor = governor ?? throw new ArgumentNullException(nameof(governor));
         _verifier = verifier;
     }
 
@@ -38,6 +40,12 @@ public class ShellPlugin
         if (_verifier != null)
         {
             originalHash = _verifier.ComputeHash(request);
+        }
+
+        // 1.5 Governor Check
+        if (_governor.ValidateAction("Shell", $"{command} {arguments}") == ApprovalStatus.Denied)
+        {
+            return "ABORTED: Action blocked by Task Governor (Safety Policy).";
         }
 
         // 2. HITL Safety Check

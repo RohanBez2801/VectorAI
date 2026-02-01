@@ -14,15 +14,18 @@ public class DeveloperConsolePlugin
     private readonly Func<ShellCommandRequest, Task<bool>> _shellApproval;
     private readonly Func<FileWriteRequest, Task<bool>> _fileApproval;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
     public DeveloperConsolePlugin(
         Func<ShellCommandRequest, Task<bool>> shellApproval,
         Func<FileWriteRequest, Task<bool>> fileApproval,
-        IVectorVerifier? verifier = null)
+        IVectorVerifier? verifier = null,
+        ITaskGovernor? governor = null)
     {
         _shellApproval = shellApproval ?? throw new ArgumentNullException(nameof(shellApproval));
         _fileApproval = fileApproval ?? throw new ArgumentNullException(nameof(fileApproval));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -51,6 +54,16 @@ public class DeveloperConsolePlugin
         string? originalHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+
+        // Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("DeveloperConsole", $"Build: {args}");
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"ABORTED: Task Governor denied action. Status: {status}";
+            }
+        }
 
         if (!await _shellApproval(approvalReq))
         {
@@ -170,6 +183,16 @@ public class DeveloperConsolePlugin
         string? originalHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+
+        // Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("DeveloperConsole", $"Patch: {filePath} {targetContent} -> {replacementContent}");
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"ABORTED: Task Governor denied action. Status: {status}";
+            }
+        }
 
         if (!await _fileApproval(req))
         {

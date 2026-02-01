@@ -17,11 +17,13 @@ public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -40,11 +42,21 @@ public class ShellPlugin
             originalHash = _verifier.ComputeHash(request);
         }
 
-        // 2. HITL Safety Check
+        // 2. Governor Check
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("Shell", $"{command} {arguments}");
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"ABORTED: Task Governor denied action. Status: {status}";
+            }
+        }
+
+        // 3. HITL Safety Check
         bool allowed = await _approvalCallback(request).ConfigureAwait(false);
         if (!allowed) return "ABORTED: User denied shell command execution.";
 
-        // 3. Verify
+        // 4. Verify
         if (_verifier != null && originalHash != null)
         {
             try

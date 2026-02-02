@@ -52,10 +52,12 @@ public class FileSystemPlugin
 
         // 1. Snapshot & Hash (Verification Prep)
         string? originalHash = null;
+        string? originalStateHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
             originalHash = _verifier.ComputeHash(req);
+            originalStateHash = await _verifier.CaptureStateAsync();
         }
 
         bool allowed = false;
@@ -76,6 +78,7 @@ public class FileSystemPlugin
             try
             {
                 _verifier.VerifyAction(req, originalHash, timestamp);
+                if (originalStateHash != null) await _verifier.VerifyStateAsync(originalStateHash);
             }
             catch (Exception ex)
             {

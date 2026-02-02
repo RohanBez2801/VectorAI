@@ -7,6 +7,7 @@ using System.Drawing.Imaging;
 using System.Runtime.Versioning;
 using System.Windows;
 using Vector.Core;
+using Vector.Service.Services;
 // using Microsoft.CognitiveServices.Speech.Synthesis; (not needed)
 
 namespace Vector.Service;
@@ -19,6 +20,7 @@ public class Worker : BackgroundService
     private MicrophoneListener? _microphoneListener;
     private PiperVoiceService _piperService;
     private VisualAttentionService _visualAttention;
+    private WindowsVisualStateProvider _visualStateProvider;
     private Task? _sttTask;
     private string _uiState = "Idle";
     private System.Net.Sockets.UdpClient? _udpClient;
@@ -33,6 +35,7 @@ public class Worker : BackgroundService
         _logger = logger;
         _piperService = new PiperVoiceService();
         _visualAttention = new VisualAttentionService();
+        _visualStateProvider = new WindowsVisualStateProvider();
     }
 
     // TTS using Azure Cognitive Services Speech SDK (neural voices if available).
@@ -78,7 +81,7 @@ public class Worker : BackgroundService
         try
         {
             _brain = new VectorBrain();
-            await _brain.InitAsync(async (req) => true, async (req) => true);
+            await _brain.InitAsync(async (req) => true, async (req) => true, null, _visualStateProvider);
 
             // CONNECT VOICE (TTS)
             _brain.OnReplyGenerated += (text) => { _ = Task.Run(() => HandleSpeakAsync(text)); };
@@ -119,7 +122,7 @@ public class Worker : BackgroundService
                 if (_udpClient != null)
                 {
                     double rms = _microphoneListener?.LastRmsLevel ?? 0.0;
-                    
+
                     // FETCH MOOD:
                     var currentMood = _brain.MoodManager?.CurrentMood.ToString() ?? "Neutral";
 

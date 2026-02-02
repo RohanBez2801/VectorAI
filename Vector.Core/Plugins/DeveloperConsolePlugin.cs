@@ -49,8 +49,13 @@ public class DeveloperConsolePlugin
 
         // Snapshot
         string? originalHash = null;
+        string? originalStateHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(approvalReq);
+            originalStateHash = await _verifier.CaptureStateAsync();
+        }
 
         if (!await _shellApproval(approvalReq))
         {
@@ -60,7 +65,11 @@ public class DeveloperConsolePlugin
         // Verify
         if (_verifier != null && originalHash != null)
         {
-            try { _verifier.VerifyAction(approvalReq, originalHash, timestamp); }
+            try
+            {
+                _verifier.VerifyAction(approvalReq, originalHash, timestamp);
+                if (originalStateHash != null) await _verifier.VerifyStateAsync(originalStateHash);
+            }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
@@ -168,8 +177,13 @@ public class DeveloperConsolePlugin
 
         // Snapshot
         string? originalHash = null;
+        string? originalStateHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(req);
+            originalStateHash = await _verifier.CaptureStateAsync();
+        }
 
         if (!await _fileApproval(req))
         {
@@ -179,7 +193,11 @@ public class DeveloperConsolePlugin
         // Verify
         if (_verifier != null && originalHash != null)
         {
-            try { _verifier.VerifyAction(req, originalHash, timestamp); }
+            try
+            {
+                _verifier.VerifyAction(req, originalHash, timestamp);
+                if (originalStateHash != null) await _verifier.VerifyStateAsync(originalStateHash);
+            }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 

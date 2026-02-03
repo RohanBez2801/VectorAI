@@ -4,6 +4,23 @@ All notable changes to VECTOR are documented in this file.
 
 ---
 
+## [v2.1.0] - 2026-02-12 (The "Boundary" Update)
+
+### ✨ New Features
+- **Strict Visual Verification:** Implemented the "VECTOR-VERIFIER" protocol.
+  - **Two-Phase Commit:** Actions are now cryptographically bound to the visual state of the screen.
+  - **UI Drift Detection:** Checks for significant visual changes between approval and execution to prevent TOCTOU attacks.
+  - **IVisualStateProvider:** Abstraction for screen capture (implemented for Windows).
+- **Security Hardening:**
+  - `VectorVerifier` now strictly enforces that the screen state matches the approved context.
+  - All sensitive plugins (`FileSystem`, `Shell`, `DeveloperConsole`) now use async verification with visual hashing.
+
+### 🛠️ Technical Improvements
+- **Async Verification:** Refactored `IVectorVerifier` and plugins to support asynchronous security checks (required for screen capture).
+- **Dependency Update:** Enabled `UseWindowsForms` in HUD to support native screen capture.
+
+---
+
 ## [v2.0.0] - 2026-01-30 (The "Evolution" Update)
 
 ### ✨ New Features
@@ -148,6 +165,7 @@ All notable changes to VECTOR are documented in this file.
 - [x] Visual Attention (Phase 5)
 - [x] Safety & Intent (Phase 6)
 - [x] Observability (Phase 7)
+- [x] Strict Visual Verification (Phase 8)
 
 ### Planned Features
 - [ ] Multi-model orchestration (specialized models per task)

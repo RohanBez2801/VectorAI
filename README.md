@@ -1,6 +1,6 @@
 # VECTOR: Local Synthetic Intelligence (SI)
 
-**Version:** 2.0.0 (Evolution Update)  
+**Version:** 2.1.0 (Boundary Update)
 **Framework:** .NET 10 (WPF + Semantic Kernel)  
 **Local Inference:** Ollama (Llama 3, LLaVA, Nomic-Embed)  
 **Graphics Engine:** DirectX 11 Native C++ Rendering  
@@ -43,6 +43,7 @@ VECTOR is capable of dangerous operations. To prevent catastrophe:
 - **Intent Classifier** — Categorizes requests as Benign/Sensitive/Dangerous
 - **Safety Guard** — Evaluates Block/Flag/Allow decisions
 - **Task Governor** — Loop detection and command blacklisting
+- **Two-Phase Commit** — Cryptographic verification of Action Data + Visual State
 - **Approval Window** — A dedicated WPF modal intercepts all high-risk kernel functions
 - **Diff View** — Users see a side-by-side "Old vs New" comparison before allowing file writes
 - **User Confirmation** — Flagged actions require explicit approval

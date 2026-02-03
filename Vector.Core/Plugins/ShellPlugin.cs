@@ -37,7 +37,7 @@ public class ShellPlugin
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
-            originalHash = _verifier.ComputeHash(request);
+            originalHash = await _verifier.ComputeHashAsync(request);
         }
 
         // 2. HITL Safety Check
@@ -49,7 +49,7 @@ public class ShellPlugin
         {
             try
             {
-                _verifier.VerifyAction(request, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(request, originalHash, timestamp);
             }
             catch (Exception ex)
             {

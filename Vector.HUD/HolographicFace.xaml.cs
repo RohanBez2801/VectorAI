@@ -9,7 +9,7 @@ using System.Windows.Threading;
 
 namespace Vector.HUD;
 
-public partial class HolographicFace : UserControl
+public partial class HolographicFace : System.Windows.Controls.UserControl
 {
     // NATIVE INTEROP
     // NOTE: Ensure Vector.Native.dll is in the same directory as the executable.

@@ -56,7 +56,8 @@ public class VectorBrain : IDisposable
     public async Task InitAsync(
         Func<FileWriteRequest, Task<bool>> fileApproval,
         Func<ShellCommandRequest, Task<bool>> shellApproval,
-        Func<string, Task<bool>>? userConfirmation = null)
+        Func<string, Task<bool>>? userConfirmation = null,
+        IVisualStateProvider? visualStateProvider = null)
     {
         _userConfirmation = userConfirmation;
 
@@ -75,7 +76,7 @@ public class VectorBrain : IDisposable
         _telemetry = new TelemetryService();
 
         // Initialize Verifier
-        _verifier = new VectorVerifier(_logger);
+        _verifier = new VectorVerifier(_logger, visualStateProvider);
 
         var builder = Kernel.CreateBuilder();
 

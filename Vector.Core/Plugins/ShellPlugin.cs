@@ -34,10 +34,12 @@ public class ShellPlugin
 
         // 1. Snapshot & Hash
         string? originalHash = null;
+        string? visualHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
             originalHash = _verifier.ComputeHash(request);
+            visualHash = await _verifier.CaptureVisualStateAsync();
         }
 
         // 2. HITL Safety Check
@@ -50,6 +52,7 @@ public class ShellPlugin
             try
             {
                 _verifier.VerifyAction(request, originalHash, timestamp);
+                await _verifier.VerifyVisualStateAsync(visualHash);
             }
             catch (Exception ex)
             {

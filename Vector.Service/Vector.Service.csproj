@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-Vector.Service-7244964e-4a22-44b4-97f8-1f5f0d1b5abf</UserSecretsId>
     <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <!-- Force x64 to match native Vosk DLL architecture and avoid CLR/native ABI mismatch -->

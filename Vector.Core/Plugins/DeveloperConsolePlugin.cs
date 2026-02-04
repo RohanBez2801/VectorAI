@@ -48,9 +48,14 @@ public class DeveloperConsolePlugin
         };
 
         // Snapshot
-        string? originalHash = null;
+        string? originalActionHash = null;
+        string originalVisualHash = "NO_VISUAL_PROVIDER";
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+        if (_verifier != null)
+        {
+            originalActionHash = await _verifier.ComputeActionHashAsync(approvalReq);
+            originalVisualHash = await _verifier.ComputeVisualStateHashAsync();
+        }
 
         if (!await _shellApproval(approvalReq))
         {
@@ -58,9 +63,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalActionHash != null)
         {
-            try { _verifier.VerifyAction(approvalReq, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(approvalReq, originalActionHash, originalVisualHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
@@ -167,9 +172,14 @@ public class DeveloperConsolePlugin
         var req = new FileWriteRequest { Path = filePath, Content = newContent };
 
         // Snapshot
-        string? originalHash = null;
+        string? originalActionHash = null;
+        string originalVisualHash = "NO_VISUAL_PROVIDER";
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+        if (_verifier != null)
+        {
+            originalActionHash = await _verifier.ComputeActionHashAsync(req);
+            originalVisualHash = await _verifier.ComputeVisualStateHashAsync();
+        }
 
         if (!await _fileApproval(req))
         {
@@ -177,9 +187,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalActionHash != null)
         {
-            try { _verifier.VerifyAction(req, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(req, originalActionHash, originalVisualHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 

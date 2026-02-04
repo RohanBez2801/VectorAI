@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Reflection;
 using Microsoft.SemanticKernel;
+using Vector.HUD.Services;
 
 namespace Vector.HUD;
 
@@ -179,9 +180,11 @@ public partial class MainWindow : Window
             });
         };
 
+        var visualProvider = new WindowsVisualStateProvider();
         await _brain.InitAsync(
             fileApproval: HandleFileApproval,
-            shellApproval: HandleShellApproval
+            shellApproval: HandleShellApproval,
+            visualProvider: visualProvider
         );
 
         if (_brain.MoodManager != null)
@@ -189,7 +192,7 @@ public partial class MainWindow : Window
             _brain.MoodManager.OnMoodChanged += (mood) =>
             {
                 // Dispatch to UI Thread
-                Application.Current.Dispatcher.Invoke(() => 
+                Application.Current.Dispatcher.Invoke(() =>
                 {
                     // Using "VectorFace" as the name of the control
                     switch (mood)
@@ -270,9 +273,9 @@ public partial class MainWindow : Window
                 if (_udpListener == null) break;
                 var res = await _udpListener.ReceiveAsync(ct);
                 var text = Encoding.UTF8.GetString(res.Buffer);
-                
+
                 var parts = text.Split('|');
-                
+
                 if (parts.Length >= 3)
                 {
                     // Part 1: Time (Ignored for visual, used for health check)
@@ -293,11 +296,11 @@ public partial class MainWindow : Window
                     // Part 2: RMS (Mouth)
                     if (double.TryParse(parts[1], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double rms))
                     {
-                        Application.Current.Dispatcher.Invoke(() => 
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
                             // Amplify slightly for visibility
                             VectorFace.SetMouthOpen((float)(rms * 4.0));
-                            
+
                             // Visualizer Updates
                             try { RmsText.Text = $"RMS: {rms:F3}"; } catch { }
                             if (VisualizerToggle.IsChecked == true)
@@ -310,14 +313,14 @@ public partial class MainWindow : Window
                             UpdateRmsGraph(rms);
                         });
                         _lastRmsFromUdp = rms;
-                        
+
                         // Feed emotional engine logic if needed (redundant now that Service handles it, but kept for local decay)
                         _brain.MoodManager?.UpdateAudioRms(rms);
                     }
 
                     // Part 3: Mood (Color)
                     string moodString = parts[2];
-                    Application.Current.Dispatcher.Invoke(() => 
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
                         ApplyMoodFromText(moodString);
                     });
@@ -325,7 +328,7 @@ public partial class MainWindow : Window
                 // Legacy fallback (Time|RMS)
                 else if (parts.Length == 2 && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rms))
                 {
-                     Application.Current.Dispatcher.Invoke(() => 
+                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         VectorFace.SetMouthOpen((float)(rms * 4.0));
                         UpdateRmsGraph(rms);
@@ -358,7 +361,7 @@ public partial class MainWindow : Window
             }
 
             var pts = RmsGraph.Points ?? new System.Windows.Media.PointCollection();
-            
+
             // Rebuild points from history for smooth scrolling
             var newPts = new System.Windows.Media.PointCollection();
             int i = 0;
@@ -383,24 +386,24 @@ public partial class MainWindow : Window
         {
             case "Hostile":
                 // Red, High Spike, No Confusion
-                VectorFace.SetMood(1.0f, 0.0f, 0.0f, 1.0f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
                 break;
             case "Concerned":
                 // Orange, Medium Spike
-                VectorFace.SetMood(1.0f, 0.5f, 0.0f, 0.5f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.5f, 0.0f, 0.5f, 0.0f);
                 break;
             case "Amused":
                 // Gold, Smooth
-                VectorFace.SetMood(1.0f, 0.8f, 0.0f, 0.0f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.8f, 0.0f, 0.0f, 0.0f);
                 break;
             case "Calculating":
                 // Deep Blue, Mild Pulse (0.2 spike)
-                VectorFace.SetMood(0.0f, 0.5f, 1.0f, 0.2f, 0.0f); 
+                VectorFace.SetMood(0.0f, 0.5f, 1.0f, 0.2f, 0.0f);
                 break;
             case "Neutral":
             default:
                 // Cyan/Teal
-                VectorFace.SetMood(0.0f, 1.0f, 1.0f, 0.0f, 0.0f); 
+                VectorFace.SetMood(0.0f, 1.0f, 1.0f, 0.0f, 0.0f);
                 break;
         }
     }

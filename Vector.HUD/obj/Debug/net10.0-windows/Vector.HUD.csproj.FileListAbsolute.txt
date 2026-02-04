@@ -1,0 +1,10 @@
+/app/Vector.HUD/obj/Debug/net10.0-windows/Vector.HUD.csproj.AssemblyReference.cache
+/app/Vector.HUD/obj/Debug/net10.0-windows/ApprovalWindow.baml
+/app/Vector.HUD/obj/Debug/net10.0-windows/HolographicFace.baml
+/app/Vector.HUD/obj/Debug/net10.0-windows/ApprovalWindow.g.cs
+/app/Vector.HUD/obj/Debug/net10.0-windows/HolographicFace.g.cs
+/app/Vector.HUD/obj/Debug/net10.0-windows/MainWindow.g.cs
+/app/Vector.HUD/obj/Debug/net10.0-windows/App.g.cs
+/app/Vector.HUD/obj/Debug/net10.0-windows/GeneratedInternalTypeHelper.g.cs
+/app/Vector.HUD/obj/Debug/net10.0-windows/Vector.HUD_MarkupCompile.cache
+/app/Vector.HUD/obj/Debug/net10.0-windows/Vector.HUD_MarkupCompile.lref

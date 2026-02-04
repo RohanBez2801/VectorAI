@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using Application = System.Windows.Application;
 using Vector.Core;
+using Vector.HUD.Services;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -16,7 +18,7 @@ namespace Vector.HUD;
 public partial class MainWindow : Window
 {
     private VectorBrain _brain = null!;
-    private Timer? _healthTimer;
+    private System.Threading.Timer? _healthTimer;
     private bool _isCoreOnline = true;
     private bool _isSentinelOnline = true;
     private bool _isLlmOnline = true;
@@ -179,9 +181,12 @@ public partial class MainWindow : Window
             });
         };
 
+        var visualStateProvider = new WindowsVisualStateProvider();
         await _brain.InitAsync(
             fileApproval: HandleFileApproval,
-            shellApproval: HandleShellApproval
+            shellApproval: HandleShellApproval,
+            userConfirmation: null,
+            visualStateProvider: visualStateProvider
         );
 
         if (_brain.MoodManager != null)
@@ -215,7 +220,7 @@ public partial class MainWindow : Window
         }
 
         // Start system heartbeat: check every 5 seconds
-        _healthTimer = new Timer(async _ => await HeartbeatAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        _healthTimer = new System.Threading.Timer(async _ => await HeartbeatAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         // Start UDP listener for low-latency heartbeat updates
         try

@@ -55,7 +55,7 @@ public class FileSystemPlugin
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
-            originalHash = _verifier.ComputeHash(req);
+            originalHash = await _verifier.ComputeHashAsync(req);
         }
 
         bool allowed = false;
@@ -75,7 +75,7 @@ public class FileSystemPlugin
         {
             try
             {
-                _verifier.VerifyAction(req, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(req, originalHash, timestamp);
             }
             catch (Exception ex)
             {

@@ -14,15 +14,18 @@ public class DeveloperConsolePlugin
     private readonly Func<ShellCommandRequest, Task<bool>> _shellApproval;
     private readonly Func<FileWriteRequest, Task<bool>> _fileApproval;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
     public DeveloperConsolePlugin(
         Func<ShellCommandRequest, Task<bool>> shellApproval,
         Func<FileWriteRequest, Task<bool>> fileApproval,
-        IVectorVerifier? verifier = null)
+        IVectorVerifier? verifier = null,
+        ITaskGovernor? governor = null)
     {
         _shellApproval = shellApproval ?? throw new ArgumentNullException(nameof(shellApproval));
         _fileApproval = fileApproval ?? throw new ArgumentNullException(nameof(fileApproval));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -38,6 +41,17 @@ public class DeveloperConsolePlugin
         {
             builder = msbuildPath;
             args = path + " /p:Configuration=Release /p:Platform=x64"; // Default to Release/x64 for Vector
+        }
+
+        // 0. Governor Check
+        string inputKey = $"{builder} {args}";
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("DeveloperConsole.Build", inputKey);
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"BLOCKED: Task Governor denied action. Reason: {status}";
+            }
         }
 
         // Safety Check
@@ -87,10 +101,15 @@ public class DeveloperConsolePlugin
 
             if (process.ExitCode == 0)
             {
+                // Record successful execution
+                _governor?.RecordAction("DeveloperConsole.Build", inputKey);
                 return $"BUILD SUCCESS:\n{output}";
             }
             else
             {
+                // Record attempted execution even if failed? Governor tracks actions to prevent loops.
+                // If it fails, maybe we want to retry, but repeating the EXACT SAME build command that fails is definitely a loop.
+                _governor?.RecordAction("DeveloperConsole.Build", inputKey);
                 return $"BUILD FAILED (Exit Code {process.ExitCode}):\n{output}\nERRORS:\n{error}";
             }
         }
@@ -143,6 +162,17 @@ public class DeveloperConsolePlugin
         [Description("The exact code segment to replace.")] string targetContent,
         [Description("The new code segment to insert.")] string replacementContent)
     {
+        // 0. Governor Check
+        if (_governor != null)
+        {
+            // Using filePath as input key for loop detection on the same file
+            var status = _governor.ValidateAction("DeveloperConsole.Patch", filePath);
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"BLOCKED: Task Governor denied action. Reason: {status}";
+            }
+        }
+
         if (!File.Exists(filePath)) return $"ERROR: File not found: {filePath}";
 
         // 1. Read to verify target exists
@@ -186,6 +216,10 @@ public class DeveloperConsolePlugin
         try
         {
             await File.WriteAllTextAsync(filePath, newContent);
+
+            // Record successful execution
+            _governor?.RecordAction("DeveloperConsole.Patch", filePath);
+
             return "SUCCESS: Patch applied.";
         }
         catch (Exception ex)

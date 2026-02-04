@@ -17,11 +17,13 @@ public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
     private readonly IVectorVerifier? _verifier;
+    private readonly ITaskGovernor? _governor;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null, ITaskGovernor? governor = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
         _verifier = verifier;
+        _governor = governor;
     }
 
     [KernelFunction]
@@ -30,6 +32,17 @@ public class ShellPlugin
         [Description("The executable to run (e.g., 'notepad', 'ping', 'explorer').")] string command,
         [Description("The arguments for the command (e.g., 'google.com', 'C:\\test.txt').")] string arguments = "")
     {
+        // 0. Governor Check
+        string inputKey = $"{command} {arguments}";
+        if (_governor != null)
+        {
+            var status = _governor.ValidateAction("Shell", inputKey);
+            if (status != ApprovalStatus.Approved)
+            {
+                return $"BLOCKED: Task Governor denied action. Reason: {status}";
+            }
+        }
+
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
 
         // 1. Snapshot & Hash
@@ -81,6 +94,9 @@ public class ShellPlugin
 
             if (!string.IsNullOrEmpty(error))
                 return $"EXIT CODE {process.ExitCode}: {output}\nERROR: {error}";
+
+            // Record successful execution
+            _governor?.RecordAction("Shell", inputKey);
 
             return $"SUCCESS:\n{output}";
         }

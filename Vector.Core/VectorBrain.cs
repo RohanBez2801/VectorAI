@@ -126,7 +126,7 @@ public class VectorBrain : IDisposable
 
         // Core System Tools
         builder.Plugins.AddFromObject(new FileSystemPlugin(fileApproval, _verifier), "FileSystem");
-        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval, _verifier), "Shell");
+        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval, _governor, _verifier), "Shell");
 
         // University Upgrade Tools
         builder.Plugins.AddFromObject(new MathPlugin(), "Math");

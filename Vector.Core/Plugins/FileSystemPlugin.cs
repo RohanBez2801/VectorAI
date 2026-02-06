@@ -24,7 +24,6 @@ public class FileSystemPlugin
         _verifier = verifier;
     }
 
-    // Read file synchronously (safe, small files only)
     [KernelFunction]
     [Description("Reads the content of a local file.")]
     public string ReadFile([Description("Path to the file to read.")] string path)
@@ -41,7 +40,6 @@ public class FileSystemPlugin
         }
     }
 
-    // Write file only after user approval via the provided callback
     [KernelFunction]
     [Description("Writes content to a local file after user approval via HUD.")]
     public async Task<string> WriteFileAsync([Description("Path to the file to write.")] string path, [Description("File content to write.")] string content)
@@ -50,12 +48,15 @@ public class FileSystemPlugin
 
         var req = new FileWriteRequest { Path = path, Content = content };
 
-        // 1. Snapshot & Hash (Verification Prep)
-        string? originalHash = null;
+        // 1. Snapshot & Hash (Data + Visual)
+        string? compositeHash = null;
         DateTime timestamp = DateTime.UtcNow;
+
         if (_verifier != null)
         {
-            originalHash = _verifier.ComputeHash(req);
+            string dataHash = _verifier.ComputeHash(req);
+            string visualHash = await _verifier.ComputeVisualHashAsync();
+            compositeHash = $"{dataHash}|{visualHash}";
         }
 
         bool allowed = false;
@@ -71,11 +72,11 @@ public class FileSystemPlugin
         if (!allowed) return "ABORTED: Write not permitted by user.";
 
         // 2. Verify (VECTOR-VERIFIER)
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && compositeHash != null)
         {
             try
             {
-                _verifier.VerifyAction(req, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(req, compositeHash, timestamp);
             }
             catch (Exception ex)
             {

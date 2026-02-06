@@ -32,12 +32,16 @@ public class ShellPlugin
     {
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
 
-        // 1. Snapshot & Hash
-        string? originalHash = null;
+        // 1. Snapshot & Hash (Two-Phase Commit: Data + Visual Context)
+        string? compositeHash = null;
         DateTime timestamp = DateTime.UtcNow;
+
         if (_verifier != null)
         {
-            originalHash = _verifier.ComputeHash(request);
+            string dataHash = _verifier.ComputeHash(request);
+            // Capture visual state asynchronously
+            string visualHash = await _verifier.ComputeVisualHashAsync();
+            compositeHash = $"{dataHash}|{visualHash}";
         }
 
         // 2. HITL Safety Check
@@ -45,11 +49,11 @@ public class ShellPlugin
         if (!allowed) return "ABORTED: User denied shell command execution.";
 
         // 3. Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && compositeHash != null)
         {
             try
             {
-                _verifier.VerifyAction(request, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(request, compositeHash, timestamp);
             }
             catch (Exception ex)
             {
@@ -77,7 +81,14 @@ public class ShellPlugin
             string output = await process.StandardOutput.ReadToEndAsync();
             string error = await process.StandardError.ReadToEndAsync();
 
-            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); // 10s timeout
+            try
+            {
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); // 10s timeout
+            }
+            catch (TimeoutException)
+            {
+                 // process still running, that's okay for long commands
+            }
 
             if (!string.IsNullOrEmpty(error))
                 return $"EXIT CODE {process.ExitCode}: {output}\nERROR: {error}";

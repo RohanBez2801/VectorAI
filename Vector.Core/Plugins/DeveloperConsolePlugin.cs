@@ -48,9 +48,14 @@ public class DeveloperConsolePlugin
         };
 
         // Snapshot
-        string? originalHash = null;
+        string? compositeHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+        if (_verifier != null)
+        {
+            string dataHash = _verifier.ComputeHash(approvalReq);
+            string visualHash = await _verifier.ComputeVisualHashAsync();
+            compositeHash = $"{dataHash}|{visualHash}";
+        }
 
         if (!await _shellApproval(approvalReq))
         {
@@ -58,9 +63,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && compositeHash != null)
         {
-            try { _verifier.VerifyAction(approvalReq, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(approvalReq, compositeHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
@@ -160,16 +165,19 @@ public class DeveloperConsolePlugin
         }
 
         // 2. Prepare Preview for Approval
-        // We act like we are overwriting the whole file for the approval window,
-        // to show the Before/After diff provided by ApprovalWindow logic.
         string newContent = currentContent.Replace(targetContent, replacementContent);
 
         var req = new FileWriteRequest { Path = filePath, Content = newContent };
 
         // Snapshot
-        string? originalHash = null;
+        string? compositeHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+        if (_verifier != null)
+        {
+            string dataHash = _verifier.ComputeHash(req);
+            string visualHash = await _verifier.ComputeVisualHashAsync();
+            compositeHash = $"{dataHash}|{visualHash}";
+        }
 
         if (!await _fileApproval(req))
         {
@@ -177,9 +185,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && compositeHash != null)
         {
-            try { _verifier.VerifyAction(req, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(req, compositeHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 

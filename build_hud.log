@@ -1,0 +1,16 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Vector.Core -> /app/Vector.Core/bin/Debug/net10.0-windows/Vector.Core.dll
+/app/Vector.HUD/App.xaml.cs(10,32): error CS0104: 'Application' is an ambiguous reference between 'System.Windows.Forms.Application' and 'System.Windows.Application' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+/app/Vector.HUD/HolographicFace.xaml.cs(12,40): error CS0104: 'UserControl' is an ambiguous reference between 'System.Windows.Controls.UserControl' and 'System.Windows.Forms.UserControl' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+/app/Vector.HUD/MainWindow.xaml.cs(19,13): error CS0104: 'Timer' is an ambiguous reference between 'System.Windows.Forms.Timer' and 'System.Threading.Timer' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+
+Build FAILED.
+
+/app/Vector.HUD/App.xaml.cs(10,32): error CS0104: 'Application' is an ambiguous reference between 'System.Windows.Forms.Application' and 'System.Windows.Application' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+/app/Vector.HUD/HolographicFace.xaml.cs(12,40): error CS0104: 'UserControl' is an ambiguous reference between 'System.Windows.Controls.UserControl' and 'System.Windows.Forms.UserControl' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+/app/Vector.HUD/MainWindow.xaml.cs(19,13): error CS0104: 'Timer' is an ambiguous reference between 'System.Windows.Forms.Timer' and 'System.Threading.Timer' [/app/Vector.HUD/Vector.HUD_ngvvlhxx_wpftmp.csproj]
+    0 Warning(s)
+    3 Error(s)
+
+Time Elapsed 00:00:03.01

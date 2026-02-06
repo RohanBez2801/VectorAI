@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Vector.Core -> /app/Vector.Core/bin/Debug/net10.0-windows/Vector.Core.dll
+  Vector.HUD -> /app/Vector.HUD/bin/Debug/net10.0-windows/Vector.HUD.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:06.45

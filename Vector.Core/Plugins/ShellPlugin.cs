@@ -33,11 +33,13 @@ public class ShellPlugin
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
 
         // 1. Snapshot & Hash
-        string? originalHash = null;
+        string? originalActionHash = null;
+        string? originalVisualHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
-            originalHash = _verifier.ComputeHash(request);
+            originalActionHash = await _verifier.ComputeActionHashAsync(request);
+            originalVisualHash = await _verifier.ComputeVisualStateHashAsync();
         }
 
         // 2. HITL Safety Check
@@ -45,11 +47,11 @@ public class ShellPlugin
         if (!allowed) return "ABORTED: User denied shell command execution.";
 
         // 3. Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalActionHash != null && originalVisualHash != null)
         {
             try
             {
-                _verifier.VerifyAction(request, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(request, originalActionHash, originalVisualHash, timestamp);
             }
             catch (Exception ex)
             {

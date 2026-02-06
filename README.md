@@ -1,6 +1,6 @@
 # VECTOR: Local Synthetic Intelligence (SI)
 
-**Version:** 2.0.0 (Evolution Update)  
+**Version:** 2.1.0 (Evolution Update)
 **Framework:** .NET 10 (WPF + Semantic Kernel)  
 **Local Inference:** Ollama (Llama 3, LLaVA, Nomic-Embed)  
 **Graphics Engine:** DirectX 11 Native C++ Rendering  

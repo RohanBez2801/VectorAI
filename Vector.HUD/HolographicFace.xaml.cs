@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,11 +9,11 @@ using System.Windows.Threading;
 
 namespace Vector.HUD;
 
-public partial class HolographicFace : UserControl
+public partial class HolographicFace : System.Windows.Controls.UserControl
 {
     // NATIVE INTEROP
     // NOTE: Ensure Vector.Native.dll is in the same directory as the executable.
-    
+
     [DllImport("Vector.Native.dll", CallingConvention = CallingConvention.StdCall)]
     private static extern void InitVectorEngine();
 
@@ -34,7 +34,7 @@ public partial class HolographicFace : UserControl
 
     private WriteableBitmap _bmp;
     private double _timeAccumulator = 0.0;
-    
+
     // Animation States
     private float _blinkFactor = 0;
     private float _mouthOpenFactor = 0;
@@ -54,7 +54,7 @@ public partial class HolographicFace : UserControl
         RenderBuffer.Source = _bmp;
 
         // No need to generate points in C# anymore, Native engine handles it.
-        // GenerateHeadGeometry(); 
+        // GenerateHeadGeometry();
 
         _blinkTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _blinkTimer.Tick += (s, e) => _ = BlinkAsync();
@@ -66,8 +66,8 @@ public partial class HolographicFace : UserControl
         {
             InitVectorEngine();
         }
-        catch 
-        { 
+        catch
+        {
             // DLL might not be loaded yet or compiled.
         }
     }
@@ -108,7 +108,7 @@ public partial class HolographicFace : UserControl
                 confusion = 0.5f;
                 break;
         }
-        
+
         try
         {
             UpdateMood(r, g, b, spike, confusion);
@@ -154,7 +154,7 @@ public partial class HolographicFace : UserControl
         {
             // Ignore other interop errors
         }
-        
+
         _bmp.AddDirtyRect(new Int32Rect(0, 0, CanvasW, CanvasH));
         _bmp.Unlock();
     }

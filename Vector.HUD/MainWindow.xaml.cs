@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,7 +16,7 @@ namespace Vector.HUD;
 public partial class MainWindow : Window
 {
     private VectorBrain _brain = null!;
-    private Timer? _healthTimer;
+    private System.Threading.Timer? _healthTimer;
     private bool _isCoreOnline = true;
     private bool _isSentinelOnline = true;
     private bool _isLlmOnline = true;
@@ -135,7 +135,7 @@ public partial class MainWindow : Window
     private async Task<bool> HandleShellApproval(Vector.Core.Plugins.ShellCommandRequest request)
     {
         // Marshal to UI Thread
-        var op = Application.Current.Dispatcher.InvokeAsync(() =>
+        var op = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
             var dialog = new ApprovalWindow();
 
@@ -165,7 +165,7 @@ public partial class MainWindow : Window
         _brain.OnReplyGenerated += (msg) =>
         {
             // Use Application.Current.Dispatcher for better safety
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 // FIX: Removed 'OutputText' reference since it was replaced by HolographicFace.
                 // Instead, we log to DebugText if the pane is open.
@@ -179,9 +179,12 @@ public partial class MainWindow : Window
             });
         };
 
+        var visualProvider = new WindowsVisualStateProvider();
         await _brain.InitAsync(
             fileApproval: HandleFileApproval,
-            shellApproval: HandleShellApproval
+            shellApproval: HandleShellApproval,
+            userConfirmation: null,
+            visualProvider: visualProvider
         );
 
         if (_brain.MoodManager != null)
@@ -189,7 +192,7 @@ public partial class MainWindow : Window
             _brain.MoodManager.OnMoodChanged += (mood) =>
             {
                 // Dispatch to UI Thread
-                Application.Current.Dispatcher.Invoke(() => 
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     // Using "VectorFace" as the name of the control
                     switch (mood)
@@ -215,7 +218,7 @@ public partial class MainWindow : Window
         }
 
         // Start system heartbeat: check every 5 seconds
-        _healthTimer = new Timer(async _ => await HeartbeatAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        _healthTimer = new System.Threading.Timer(async _ => await HeartbeatAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         // Start UDP listener for low-latency heartbeat updates
         try
@@ -241,7 +244,7 @@ public partial class MainWindow : Window
             catch { oldContent = "[Unable to read existing file]"; }
 
             // Create and show the approval window on the UI thread
-            var op = Application.Current.Dispatcher.InvokeAsync(() =>
+            var op = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 var w = new ApprovalWindow();
                 // Sarcasm-heavy header already present in the window XAML
@@ -270,16 +273,16 @@ public partial class MainWindow : Window
                 if (_udpListener == null) break;
                 var res = await _udpListener.ReceiveAsync(ct);
                 var text = Encoding.UTF8.GetString(res.Buffer);
-                
+
                 var parts = text.Split('|');
-                
+
                 if (parts.Length >= 3)
                 {
                     // Part 1: Time (Ignored for visual, used for health check)
                     if (DateTime.TryParse(parts[0], out var dt))
                     {
                         var latency = (DateTime.UtcNow - dt.ToUniversalTime()).TotalMilliseconds;
-                         Application.Current.Dispatcher.Invoke(() =>
+                         System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             if (DebugToggle.IsChecked == true)
                             {
@@ -293,11 +296,11 @@ public partial class MainWindow : Window
                     // Part 2: RMS (Mouth)
                     if (double.TryParse(parts[1], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double rms))
                     {
-                        Application.Current.Dispatcher.Invoke(() => 
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             // Amplify slightly for visibility
                             VectorFace.SetMouthOpen((float)(rms * 4.0));
-                            
+
                             // Visualizer Updates
                             try { RmsText.Text = $"RMS: {rms:F3}"; } catch { }
                             if (VisualizerToggle.IsChecked == true)
@@ -310,14 +313,14 @@ public partial class MainWindow : Window
                             UpdateRmsGraph(rms);
                         });
                         _lastRmsFromUdp = rms;
-                        
+
                         // Feed emotional engine logic if needed (redundant now that Service handles it, but kept for local decay)
                         _brain.MoodManager?.UpdateAudioRms(rms);
                     }
 
                     // Part 3: Mood (Color)
                     string moodString = parts[2];
-                    Application.Current.Dispatcher.Invoke(() => 
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         ApplyMoodFromText(moodString);
                     });
@@ -325,7 +328,7 @@ public partial class MainWindow : Window
                 // Legacy fallback (Time|RMS)
                 else if (parts.Length == 2 && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rms))
                 {
-                     Application.Current.Dispatcher.Invoke(() => 
+                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         VectorFace.SetMouthOpen((float)(rms * 4.0));
                         UpdateRmsGraph(rms);
@@ -358,7 +361,7 @@ public partial class MainWindow : Window
             }
 
             var pts = RmsGraph.Points ?? new System.Windows.Media.PointCollection();
-            
+
             // Rebuild points from history for smooth scrolling
             var newPts = new System.Windows.Media.PointCollection();
             int i = 0;
@@ -383,24 +386,24 @@ public partial class MainWindow : Window
         {
             case "Hostile":
                 // Red, High Spike, No Confusion
-                VectorFace.SetMood(1.0f, 0.0f, 0.0f, 1.0f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
                 break;
             case "Concerned":
                 // Orange, Medium Spike
-                VectorFace.SetMood(1.0f, 0.5f, 0.0f, 0.5f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.5f, 0.0f, 0.5f, 0.0f);
                 break;
             case "Amused":
                 // Gold, Smooth
-                VectorFace.SetMood(1.0f, 0.8f, 0.0f, 0.0f, 0.0f); 
+                VectorFace.SetMood(1.0f, 0.8f, 0.0f, 0.0f, 0.0f);
                 break;
             case "Calculating":
                 // Deep Blue, Mild Pulse (0.2 spike)
-                VectorFace.SetMood(0.0f, 0.5f, 1.0f, 0.2f, 0.0f); 
+                VectorFace.SetMood(0.0f, 0.5f, 1.0f, 0.2f, 0.0f);
                 break;
             case "Neutral":
             default:
                 // Cyan/Teal
-                VectorFace.SetMood(0.0f, 1.0f, 1.0f, 0.0f, 0.0f); 
+                VectorFace.SetMood(0.0f, 1.0f, 1.0f, 0.0f, 0.0f);
                 break;
         }
     }
@@ -530,7 +533,7 @@ public partial class MainWindow : Window
         }
 
         // Apply UI updates and emit messages only for transitions
-        Application.Current.Dispatcher.Invoke(() =>
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
             OllamaStatus.Fill = _isLlmOnline ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Red);
             SentinelStatus.Fill = _isSentinelOnline ? new SolidColorBrush(Colors.LimeGreen) : new SolidColorBrush(Colors.Red);

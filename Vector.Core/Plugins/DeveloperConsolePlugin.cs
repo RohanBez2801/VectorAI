@@ -13,15 +13,18 @@ public class DeveloperConsolePlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _shellApproval;
     private readonly Func<FileWriteRequest, Task<bool>> _fileApproval;
+    private readonly ITaskGovernor _governor;
     private readonly IVectorVerifier? _verifier;
 
     public DeveloperConsolePlugin(
         Func<ShellCommandRequest, Task<bool>> shellApproval,
         Func<FileWriteRequest, Task<bool>> fileApproval,
+        ITaskGovernor governor,
         IVectorVerifier? verifier = null)
     {
         _shellApproval = shellApproval ?? throw new ArgumentNullException(nameof(shellApproval));
         _fileApproval = fileApproval ?? throw new ArgumentNullException(nameof(fileApproval));
+        _governor = governor ?? throw new ArgumentNullException(nameof(governor));
         _verifier = verifier;
     }
 
@@ -29,6 +32,14 @@ public class DeveloperConsolePlugin
     [Description("Runs 'dotnet build' or 'MSBuild' on the project. Returns the build output.")]
     public async Task<string> BuildProject([Description("Optional: Logical path or project file. Defaults to current directory.")] string path = ".")
     {
+        // 0. Action Policy Check
+        string signature = $"Build:{path}";
+        if (_governor.ValidateAction("DeveloperConsole", signature) == ApprovalStatus.Denied)
+        {
+            return "BLOCKED: Action denied by TaskGovernor (ActionPolicy violation or loop detected).";
+        }
+        _governor.RecordAction("DeveloperConsole", signature);
+
         string builder = "dotnet";
         string args = "build " + path;
 
@@ -143,6 +154,15 @@ public class DeveloperConsolePlugin
         [Description("The exact code segment to replace.")] string targetContent,
         [Description("The new code segment to insert.")] string replacementContent)
     {
+        // 0. Action Policy Check
+        string contentHash = GetStableHash(replacementContent);
+        string signature = $"Patch:{filePath}:{contentHash}";
+        if (_governor.ValidateAction("DeveloperConsole", signature) == ApprovalStatus.Denied)
+        {
+            return "BLOCKED: Action denied by TaskGovernor (ActionPolicy violation or loop detected).";
+        }
+        _governor.RecordAction("DeveloperConsole", signature);
+
         if (!File.Exists(filePath)) return $"ERROR: File not found: {filePath}";
 
         // 1. Read to verify target exists
@@ -192,5 +212,12 @@ public class DeveloperConsolePlugin
         {
             return $"ERROR: Failed to write file. {ex.Message}";
         }
+    }
+
+    private static string GetStableHash(string content)
+    {
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes);
     }
 }

@@ -125,15 +125,15 @@ public class VectorBrain : IDisposable
         // 5. Register Plugins
 
         // Core System Tools
-        builder.Plugins.AddFromObject(new FileSystemPlugin(fileApproval, _verifier), "FileSystem");
-        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval, _verifier), "Shell");
+        builder.Plugins.AddFromObject(new FileSystemPlugin(fileApproval, _governor!, _verifier), "FileSystem");
+        builder.Plugins.AddFromObject(new ShellPlugin(shellApproval, _governor!, _verifier), "Shell");
 
         // University Upgrade Tools
         builder.Plugins.AddFromObject(new MathPlugin(), "Math");
         builder.Plugins.AddFromObject(new ComputerSciencePlugin(), "ComputerScience");
 
         // Self-Development Tools
-        builder.Plugins.AddFromObject(new DeveloperConsolePlugin(shellApproval, fileApproval, _verifier), "DeveloperConsole");
+        builder.Plugins.AddFromObject(new DeveloperConsolePlugin(shellApproval, fileApproval, _governor!, _verifier), "DeveloperConsole");
 
         // Long-Term Memory Plugin (still uses direct _memory for SK compatibility)
         if (_memory != null)

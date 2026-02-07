@@ -1,5 +1,0 @@
-C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net10.0\Vector.Core.csproj.AssemblyReference.cache
-C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net10.0\Vector.Core.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net10.0\Vector.Core.AssemblyInfoInputs.cache
-C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net10.0\Vector.Core.AssemblyInfo.cs
-C:\Users\rouxn\source\repos\VectorAI\Vector.Core\obj\Debug\net10.0\Vector.Core.csproj.CoreCompileInputs.cache

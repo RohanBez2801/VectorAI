@@ -16,11 +16,16 @@ public class ShellCommandRequest
 public class ShellPlugin
 {
     private readonly Func<ShellCommandRequest, Task<bool>> _approvalCallback;
+    private readonly ITaskGovernor _governor;
     private readonly IVectorVerifier? _verifier;
 
-    public ShellPlugin(Func<ShellCommandRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public ShellPlugin(
+        Func<ShellCommandRequest, Task<bool>> approvalCallback,
+        ITaskGovernor governor,
+        IVectorVerifier? verifier = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _governor = governor ?? throw new ArgumentNullException(nameof(governor));
         _verifier = verifier;
     }
 
@@ -31,6 +36,13 @@ public class ShellPlugin
         [Description("The arguments for the command (e.g., 'google.com', 'C:\\test.txt').")] string arguments = "")
     {
         var request = new ShellCommandRequest { Command = command, Arguments = arguments };
+
+        // 0. Action Policy Check
+        if (_governor.ValidateAction("Shell", $"{command} {arguments}") == ApprovalStatus.Denied)
+        {
+            return "BLOCKED: Action denied by TaskGovernor (ActionPolicy violation or loop detected).";
+        }
+        _governor.RecordAction("Shell", $"{command} {arguments}");
 
         // 1. Snapshot & Hash
         string? originalHash = null;

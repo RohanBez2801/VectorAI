@@ -49,8 +49,13 @@ public class DeveloperConsolePlugin
 
         // Snapshot
         string? originalHash = null;
+        string? originalVisualHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(approvalReq);
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(approvalReq);
+            originalVisualHash = await _verifier.ComputeVisualHashAsync();
+        }
 
         if (!await _shellApproval(approvalReq))
         {
@@ -58,9 +63,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalHash != null && originalVisualHash != null)
         {
-            try { _verifier.VerifyAction(approvalReq, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(approvalReq, originalHash, originalVisualHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 
@@ -168,8 +173,13 @@ public class DeveloperConsolePlugin
 
         // Snapshot
         string? originalHash = null;
+        string? originalVisualHash = null;
         DateTime timestamp = DateTime.UtcNow;
-        if (_verifier != null) originalHash = _verifier.ComputeHash(req);
+        if (_verifier != null)
+        {
+            originalHash = _verifier.ComputeHash(req);
+            originalVisualHash = await _verifier.ComputeVisualHashAsync();
+        }
 
         if (!await _fileApproval(req))
         {
@@ -177,9 +187,9 @@ public class DeveloperConsolePlugin
         }
 
         // Verify
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalHash != null && originalVisualHash != null)
         {
-            try { _verifier.VerifyAction(req, originalHash, timestamp); }
+            try { await _verifier.VerifyActionAsync(req, originalHash, originalVisualHash, timestamp); }
             catch (Exception ex) { return $"SECURITY ALERT: {ex.Message}"; }
         }
 

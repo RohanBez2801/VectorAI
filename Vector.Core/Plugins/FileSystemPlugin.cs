@@ -52,10 +52,12 @@ public class FileSystemPlugin
 
         // 1. Snapshot & Hash (Verification Prep)
         string? originalHash = null;
+        string? originalVisualHash = null;
         DateTime timestamp = DateTime.UtcNow;
         if (_verifier != null)
         {
             originalHash = _verifier.ComputeHash(req);
+            originalVisualHash = await _verifier.ComputeVisualHashAsync();
         }
 
         bool allowed = false;
@@ -71,11 +73,11 @@ public class FileSystemPlugin
         if (!allowed) return "ABORTED: Write not permitted by user.";
 
         // 2. Verify (VECTOR-VERIFIER)
-        if (_verifier != null && originalHash != null)
+        if (_verifier != null && originalHash != null && originalVisualHash != null)
         {
             try
             {
-                _verifier.VerifyAction(req, originalHash, timestamp);
+                await _verifier.VerifyActionAsync(req, originalHash, originalVisualHash, timestamp);
             }
             catch (Exception ex)
             {

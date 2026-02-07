@@ -181,7 +181,8 @@ public partial class MainWindow : Window
 
         await _brain.InitAsync(
             fileApproval: HandleFileApproval,
-            shellApproval: HandleShellApproval
+            shellApproval: HandleShellApproval,
+            visualProvider: new Vector.HUD.Services.WindowsVisualStateProvider()
         );
 
         if (_brain.MoodManager != null)

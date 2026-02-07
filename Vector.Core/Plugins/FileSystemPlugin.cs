@@ -16,11 +16,16 @@ public class FileWriteRequest
 public class FileSystemPlugin
 {
     private readonly Func<FileWriteRequest, Task<bool>> _approvalCallback;
+    private readonly ITaskGovernor _governor;
     private readonly IVectorVerifier? _verifier;
 
-    public FileSystemPlugin(Func<FileWriteRequest, Task<bool>> approvalCallback, IVectorVerifier? verifier = null)
+    public FileSystemPlugin(
+        Func<FileWriteRequest, Task<bool>> approvalCallback,
+        ITaskGovernor governor,
+        IVectorVerifier? verifier = null)
     {
         _approvalCallback = approvalCallback ?? throw new ArgumentNullException(nameof(approvalCallback));
+        _governor = governor ?? throw new ArgumentNullException(nameof(governor));
         _verifier = verifier;
     }
 
@@ -48,7 +53,16 @@ public class FileSystemPlugin
     {
         if (string.IsNullOrWhiteSpace(path)) return "ERROR: Invalid path";
 
-        var req = new FileWriteRequest { Path = path, Content = content };
+        // 0. Action Policy Check
+        string contentHash = GetStableHash(content ?? string.Empty);
+        string signature = $"{path}:{contentHash}";
+        if (_governor.ValidateAction("FileSystem", signature) == ApprovalStatus.Denied)
+        {
+            return "BLOCKED: Action denied by TaskGovernor (ActionPolicy violation or loop detected).";
+        }
+        _governor.RecordAction("FileSystem", signature);
+
+        var req = new FileWriteRequest { Path = path, Content = content ?? string.Empty };
 
         // 1. Snapshot & Hash (Verification Prep)
         string? originalHash = null;
@@ -92,5 +106,12 @@ public class FileSystemPlugin
         {
             return $"ERROR: {ex.Message}";
         }
+    }
+
+    private static string GetStableHash(string content)
+    {
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes);
     }
 }
